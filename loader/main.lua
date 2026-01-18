@@ -84,7 +84,7 @@ end
 -- LOAD SECURITY LOADER
 -- =========================
 dprint("Loading SecurityLoader...")
-local SecurityLoader = requireURL("security/SecurityLoader.lua")
+local SecurityLoader = requireURL("security/Security.lua")
 
 -- =========================
 -- LOAD APIs (DEBUGGED)
