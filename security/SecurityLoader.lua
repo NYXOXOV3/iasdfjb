@@ -9,17 +9,17 @@ SecurityLoader.Config = {
 
     API_FLAGS = {
         INFO = true,
-        PLAYER = true,
-        FISHING = true,
-        AUTOMATIC = true,
-        TELEPORT = true,
-        SHOP = true,
-        EXCLUSIVE = true,
-        QUEST = true,
-        EVENT = true,
-        TOOLS = true,
-        WEBHOOK = true,
-        CONFIGURATION = true,
+        --PLAYER = true,
+        --FISHING = true,
+        --AUTOMATIC = true,
+        --TELEPORT = true,
+        --SHOP = true,
+        --EXCLUSIVE = true,
+        --QUEST = true,
+        --EVENT = true,
+        --TOOLS = true,
+        --WEBHOOK = true,
+        --CONFIGURATION = true,
     }
 }
 
