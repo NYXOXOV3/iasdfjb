@@ -40,6 +40,12 @@ local AntiStaffRejoin = {
     Connections = {}
 }
 
+local InfiniteZoomData = {
+    Enabled = false,
+    DefaultMaxZoom = nil,
+    Connection = nil,
+    MaxZoomValue = 200
+}
 -- =========================================================
 -- HELPERS
 -- =========================================================
@@ -412,6 +418,53 @@ function PlayerAPI:SetInfiniteJump(enabled)
         if connections.InfJump then
             connections.InfJump:Disconnect()
             connections.InfJump = nil
+        end
+    end
+end
+
+-- =========================================================
+-- INFINITE ZOOM
+-- =========================================================
+
+function PlayerAPI:SetInfiniteZoom(state)
+    if InfiniteZoomData.Enabled == state then return end
+    InfiniteZoomData.Enabled = state
+
+    -- =========================
+    -- ENABLE
+    -- =========================
+    if state then
+        -- Simpan nilai asli sekali saja
+        if not InfiniteZoomData.DefaultMaxZoom then
+            InfiniteZoomData.DefaultMaxZoom = LocalPlayer.CameraMaxZoomDistance
+        end
+
+        -- Paksa nilai besar
+        LocalPlayer.CameraMaxZoomDistance = InfiniteZoomData.MaxZoomValue
+
+        -- Pastikan game tidak bisa override
+        if InfiniteZoomData.Connection then
+            InfiniteZoomData.Connection:Disconnect()
+        end
+
+        InfiniteZoomData.Connection =
+            RunService.RenderStepped:Connect(function()
+                if LocalPlayer.CameraMaxZoomDistance ~= InfiniteZoomData.MaxZoomValue then
+                    LocalPlayer.CameraMaxZoomDistance = InfiniteZoomData.MaxZoomValue
+                end
+            end)
+
+    -- =========================
+    -- DISABLE
+    -- =========================
+    else
+        if InfiniteZoomData.Connection then
+            InfiniteZoomData.Connection:Disconnect()
+            InfiniteZoomData.Connection = nil
+        end
+
+        if InfiniteZoomData.DefaultMaxZoom then
+            LocalPlayer.CameraMaxZoomDistance = InfiniteZoomData.DefaultMaxZoom
         end
     end
 end
