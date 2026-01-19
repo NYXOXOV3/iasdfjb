@@ -50,6 +50,7 @@ return function(Window, PlayerAPI, WindUI)
             })
         end
     })
+    tab:Divider()
     -- =========================
     -- MOVEMENT
     -- =========================
@@ -86,8 +87,7 @@ return function(Window, PlayerAPI, WindUI)
             })
         end
     })
-    
-    movement:Divider()
+    tab:Divider()
     -- =========================
     -- MODES
     -- =========================
@@ -127,7 +127,7 @@ return function(Window, PlayerAPI, WindUI)
             PlayerAPI:SetFreeze(state)
         end
     })
-    ability:Divider()
+    tab:Divider()
     -- =========================
     -- VISUAL
     -- =========================
@@ -147,15 +147,7 @@ return function(Window, PlayerAPI, WindUI)
             PlayerAPI:SetESP(state)
         end
     })
-
-    other:Button({
-        Title = "Reset All Player Settings",
-        Icon = "rotate-ccw",
-        Callback = function()
-            PlayerAPI:ResetAll()
-        end
-    })
-    other:Divider()
+    tab:Divider()
     -- =========================
     -- EXTERNAL
     -- =========================
