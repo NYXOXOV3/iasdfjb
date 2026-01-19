@@ -173,21 +173,26 @@ local function BlatantLoop()
     blatantEquipThread = task.spawn(function()
         while Blatant.Active do
             RE_Equip:FireServer(1)
-            task.wait(0.1)
+            task.wait(0.05) -- LEBIH CEPAT
         end
     end)
 
     while Blatant.Active do
-        RF_Update:InvokeServer(true)
-        RF_Charge:InvokeServer(math.huge)
-        RF_Start:InvokeServer(-139.6379, 0.9964)
-        task.delay(Blatant.CompleteDelay, function()
-            if Blatant.Active then
-                RE_Complete:FireServer()
-            end
-        end)
-        task.wait(Blatant.CancelDelay)
+        -- 🔥 RESET STATE (KUNCI SPEED)
         RF_Cancel:InvokeServer()
+
+        -- 🔥 INSTANT CHARGE + START
+        RF_Charge:InvokeServer(math.huge)
+        RF_Start:InvokeServer(-139.6379699707, 0.99647927980797)
+
+        -- 🔥 COMPLETE TANPA DELAY ASYNC
+        task.wait(Blatant.CompleteDelay)
+        if Blatant.Active then
+            RE_Complete:FireServer()
+        end
+
+        -- 🔥 LOOP CEPAT
+        task.wait(Blatant.CancelDelay)
     end
 end
 
@@ -196,6 +201,8 @@ function FishingAPI:SetActive(state)
     SyncAutoPerfect()
 
     if state then
+        RF_Update:InvokeServer(true) -- PANGGIL SEKALI
+        if blatantLoopThread then task.cancel(blatantLoopThread) end
         blatantLoopThread = task.spawn(BlatantLoop)
     else
         if blatantLoopThread then task.cancel(blatantLoopThread) end
