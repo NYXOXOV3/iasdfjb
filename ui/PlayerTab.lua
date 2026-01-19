@@ -1,5 +1,5 @@
 -- =========================================================
--- PLAYER TAB UI (FIXED WINDUI VERSION)
+-- PLAYER TAB UI (WINDUI SAFE)
 -- =========================================================
 
 return function(Window, PlayerAPI, WindUI)
@@ -98,7 +98,6 @@ return function(Window, PlayerAPI, WindUI)
     stream:Input({
         Title = "Fake Name",
         Value = ".gg/NYXHUB",
-        Placeholder = "Fake Name",
         Callback = function(v)
             PlayerAPI:SetFakeName(v)
         end
@@ -107,13 +106,11 @@ return function(Window, PlayerAPI, WindUI)
     stream:Input({
         Title = "Fake Level",
         Value = "Lvl. 969",
-        Placeholder = "Fake Level",
         Callback = function(v)
             PlayerAPI:SetFakeLevel(v)
         end
     })
 
-    -- ⚠️ WINDUI DROPDOWN FIX
     stream:Dropdown({
         Title = "Hide Mode",
         Values = { "SELF", "SELECTED", "ALL" },
@@ -131,34 +128,41 @@ return function(Window, PlayerAPI, WindUI)
     })
 
     -- =========================
-    -- PLAYER SELECTOR (SELECTED MODE)
+    -- PLAYER SELECTOR (NO CLEAR)
     -- =========================
     local selector = tab:Section({
-        Title = "Select Players",
+        Title = "Select Players (Selected Mode)",
         TextSize = 16,
     })
 
-    local function refreshPlayers()
-        selector:Clear()
-        for _, plr in ipairs(Players:GetPlayers()) do
-            if plr ~= LocalPlayer then
-                selector:Toggle({
-                    Title = plr.Name,
-                    Callback = function(state)
-                        if state then
-                            PlayerAPI:AddHideTarget(plr)
-                        else
-                            PlayerAPI:RemoveHideTarget(plr)
-                        end
-                    end
-                })
+    local created = {}
+
+    local function addPlayer(plr)
+        if plr == LocalPlayer or created[plr] then return end
+        created[plr] = true
+
+        selector:Toggle({
+            Title = plr.Name,
+            Callback = function(state)
+                if state then
+                    PlayerAPI:AddHideTarget(plr)
+                else
+                    PlayerAPI:RemoveHideTarget(plr)
+                end
             end
-        end
+        })
     end
 
-    refreshPlayers()
-    Players.PlayerAdded:Connect(refreshPlayers)
-    Players.PlayerRemoving:Connect(refreshPlayers)
+    for _, plr in ipairs(Players:GetPlayers()) do
+        addPlayer(plr)
+    end
+
+    Players.PlayerAdded:Connect(addPlayer)
+
+    Players.PlayerRemoving:Connect(function(plr)
+        created[plr] = nil
+        PlayerAPI:RemoveHideTarget(plr)
+    end)
 
     -- =========================
     -- OTHER
