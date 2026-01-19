@@ -11,6 +11,8 @@ local PlayerAPI = {}
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
+local TeleportService = game:GetService("TeleportService")
+local HttpService = game:GetService("HttpService")
 
 local LocalPlayer = Players.LocalPlayer
 
@@ -30,6 +32,14 @@ local state = {
 
 local connections = {}
 
+local AntiStaffRejoin = {
+    Enabled = false,
+    Mode = "SameServer", -- "SameServer" | "LowServer"
+    Keywords = { "mod", "admin", "staff", "dev", "owner", "helper" },
+    Triggered = false,
+    Connections = {}
+}
+
 -- =========================================================
 -- HELPERS
 -- =========================================================
@@ -45,6 +55,16 @@ end
 local function getHRP()
     local char = getCharacter()
     return char:WaitForChild("HumanoidRootPart")
+end
+
+local function isStaff(plr)
+    local name = (plr.Name .. plr.DisplayName):lower()
+    for _, k in ipairs(AntiStaffRejoin.Keywords) do
+        if string.find(name, k) then
+            return true
+        end
+    end
+    return false
 end
 
 -- =========================================================
@@ -214,7 +234,80 @@ function PlayerAPI:SetHideUsername(state)
     print("[Solace] Hide Username enabled (persistent)")
 end
 
+-- ANTI STAFF CONFIG
+local function rejoinSameServer()
+    TeleportService:TeleportToPlaceInstance(
+        game.PlaceId,
+        game.JobId,
+        LocalPlayer
+    )
+end
 
+local function hopLowServer()
+    local placeId = game.PlaceId
+    local url = "https://games.roblox.com/v1/games/"..placeId.."/servers/Public?sortOrder=Asc&limit=100"
+
+    local body = HttpService:JSONDecode(game:HttpGet(url))
+    local candidates = {}
+
+    for _, server in ipairs(body.data or {}) do
+        if server.playing < server.maxPlayers and server.id ~= game.JobId then
+            table.insert(candidates, server.id)
+        end
+    end
+
+    if #candidates > 0 then
+        TeleportService:TeleportToPlaceInstance(
+            placeId,
+            candidates[math.random(#candidates)],
+            LocalPlayer
+        )
+    else
+        rejoinSameServer()
+    end
+end
+
+local function staffDetected(reason)
+    if not AntiStaffRejoin.Enabled then return end
+    if AntiStaffRejoin.Triggered then return end
+
+    AntiStaffRejoin.Triggered = true
+    warn("[ANTI STAFF] Detected:", reason)
+
+    task.delay(0.2, function()
+        if AntiStaffRejoin.Mode == "LowServer" then
+            hopLowServer()
+        else
+            rejoinSameServer()
+        end
+    end)
+end
+
+function PlayerAPI:SetAntiStaffAutoRejoin(state, mode)
+    AntiStaffRejoin.Enabled = state
+    AntiStaffRejoin.Mode = mode or AntiStaffRejoin.Mode
+    AntiStaffRejoin.Triggered = false
+
+    -- cleanup
+    for _, c in pairs(AntiStaffRejoin.Connections) do
+        if typeof(c) == "RBXScriptConnection" then
+            c:Disconnect()
+        end
+    end
+    AntiStaffRejoin.Connections = {}
+
+    if not state then return end
+
+    -- staff join detect
+    AntiStaffRejoin.Connections.Join =
+        Players.PlayerAdded:Connect(function(plr)
+            task.wait(0.5)
+            if isStaff(plr) then
+                staffDetected("Staff joined: " .. plr.Name)
+            end
+        end)
+end
+-- RESET PLAYER INPLACE
 function PlayerAPI:ResetCharacterInPlace()
     local player = LocalPlayer
     local char = player.Character
