@@ -104,7 +104,7 @@ local function loadAPI(tag, path)
 end
 
 APIs.Info          = loadAPI("INFO", "methode/info/InfoAPI.lua")
-APIs.Player        = loadAPI("PLAYER", "methode/player/PlayerAPI.lua")
+APIs.Settings        = loadAPI("SETTINGS", "methode/settings/SettingsAPI.lua")
 --APIs.Fishing       = loadAPI("FISHING", "methode/fishing/FishingAPI.lua")
 --APIs.Automatic     = loadAPI("AUTOMATIC", "methode/automatic/AutomaticAPI.lua")
 --APIs.Teleport      = loadAPI("TELEPORT", "methode/teleport/TeleportAPI.lua")
@@ -173,7 +173,7 @@ local function loadTab(path, api)
 end
 
 loadTab("ui/InfoTab.lua", APIs.Info)
-loadTab("ui/PlayerTab.lua", APIs.Player)
+loadTab("ui/SettingsTab.lua", APIs.Settings)
 --loadTab("ui/FishingTab.lua", APIs.Fishing)
 --loadTab("ui/AutomaticTab.lua", APIs.Automatic)
 --loadTab("ui/TeleportTab.lua", APIs.Teleport)
