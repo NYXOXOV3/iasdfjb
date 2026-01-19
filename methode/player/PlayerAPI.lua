@@ -11,6 +11,7 @@ local PlayerAPI = {}
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
+local StarterGui = game:GetService("StarterGui")
 
 local LocalPlayer = Players.LocalPlayer
 
@@ -253,26 +254,70 @@ end
 
 local hideState = {
     Enabled = false,
+    Mode = "SELF", -- SELF | SELECTED | ALL
+    Targets = {}, -- [Player] = true
     CustomName = ".gg/NYXHUB",
     CustomLevel = "Lvl. 969",
 }
 
 local hideConn
 
+-- =========================
+-- HELPERS
+-- =========================
+local function isTarget(plr)
+    if hideState.Mode == "ALL" then
+        return true
+    end
+    if hideState.Mode == "SELF" then
+        return plr == LocalPlayer
+    end
+    if hideState.Mode == "SELECTED" then
+        return hideState.Targets[plr] == true
+    end
+    return false
+end
+
+-- =========================
+-- PUBLIC CONFIG
+-- =========================
 function PlayerAPI:SetFakeName(name)
-    hideState.CustomName = name
+    hideState.CustomName = tostring(name)
 end
 
 function PlayerAPI:SetFakeLevel(level)
-    hideState.CustomLevel = level
+    hideState.CustomLevel = tostring(level)
 end
 
+function PlayerAPI:SetHideMode(mode)
+    if mode == "SELF" or mode == "SELECTED" or mode == "ALL" then
+        hideState.Mode = mode
+    end
+end
+
+function PlayerAPI:AddHideTarget(player)
+    if typeof(player) == "Instance" and player:IsA("Player") then
+        hideState.Targets[player] = true
+    end
+end
+
+function PlayerAPI:RemoveHideTarget(player)
+    hideState.Targets[player] = nil
+end
+
+function PlayerAPI:ClearHideTargets()
+    hideState.Targets = {}
+end
+
+-- =========================
+-- CORE TOGGLE
+-- =========================
 function PlayerAPI:SetHideUsernames(enabled)
     hideState.Enabled = enabled
 
     -- Toggle PlayerList
     pcall(function()
-        game:GetService("StarterGui"):SetCoreGuiEnabled(
+        StarterGui:SetCoreGuiEnabled(
             Enum.CoreGuiType.PlayerList,
             not enabled
         )
@@ -283,33 +328,30 @@ function PlayerAPI:SetHideUsernames(enabled)
 
         hideConn = RunService.RenderStepped:Connect(function()
             for _, plr in ipairs(Players:GetPlayers()) do
+                if not isTarget(plr) then continue end
+
                 local char = plr.Character
                 if not char then continue end
 
-                -- A. Humanoid DisplayName
+                -- A. DisplayName
                 local hum = char:FindFirstChildOfClass("Humanoid")
                 if hum and hum.DisplayName ~= hideState.CustomName then
                     hum.DisplayName = hideState.CustomName
                 end
 
-                -- B. BillboardGui Text
+                -- B. BillboardGui
                 for _, gui in ipairs(char:GetDescendants()) do
                     if gui:IsA("BillboardGui") then
                         for _, lbl in ipairs(gui:GetDescendants()) do
                             if lbl:IsA("TextLabel") or lbl:IsA("TextButton") then
-                                if lbl.Visible then
-                                    local txt = lbl.Text
+                                if not lbl.Visible then continue end
+                                local txt = lbl.Text
 
-                                    if txt:find(plr.Name) or txt:find(plr.DisplayName) then
-                                        lbl.Text = hideState.CustomName
-
-                                    elseif txt:match("%d+") 
-                                        or txt:lower():find("lvl")
-                                        or txt:lower():find("level") then
-
-                                        if #txt < 15 then
-                                            lbl.Text = hideState.CustomLevel
-                                        end
+                                if txt:find(plr.Name) or txt:find(plr.DisplayName) then
+                                    lbl.Text = hideState.CustomName
+                                elseif txt:match("%d+") or txt:lower():find("lvl") or txt:lower():find("level") then
+                                    if #txt < 15 then
+                                        lbl.Text = hideState.CustomLevel
                                     end
                                 end
                             end
@@ -335,7 +377,6 @@ function PlayerAPI:SetHideUsernames(enabled)
         end
     end
 end
-
 -- =========================
 -- PLAYER ESP
 -- =========================
