@@ -1,5 +1,5 @@
 -- =========================================================
--- FISHING API (FULL, FIXED, NO LOGIC CUT)
+-- FISHING API (BASED ON ORIGINAL FARM LOGIC)
 -- =========================================================
 
 local FishingAPI = {}
@@ -11,33 +11,33 @@ local RepStorage = game:GetService("ReplicatedStorage")
 
 local LocalPlayer = Players.LocalPlayer
 
--- ================= GLOBAL STATE =================
+-- ================= STATE =================
 local legitAutoState = false
 local normalInstantState = false
+local blatantInstantState = false
 
 local normalLoopThread
 local blatantLoopThread
-
 local normalEquipThread
 local blatantEquipThread
 local legitEquipThread
 local legitClickThread
 
 local SPEED_LEGIT = 0.05
-local normalCompleteDelay = 1.50
+local normalCompleteDelay = 1.5
 
 local isTeleportFreezeActive = false
 local selectedArea = nil
 local savedPosition = nil
 
 -- ================= HELPERS =================
-function FishingAPI:GetHRP()
+local function GetHRP()
     local char = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
     return char:WaitForChild("HumanoidRootPart", 5)
 end
 
-function FishingAPI:TeleportToLookAt(position, lookVector)
-    local hrp = self:GetHRP()
+local function TeleportToLookAt(position, lookVector)
+    local hrp = GetHRP()
     if not hrp then return false end
     hrp.CFrame = CFrame.new(position, position + lookVector) * CFrame.new(0, 0.5, 0)
     return true
@@ -51,29 +51,28 @@ local function GetRemote(path, name)
     return obj:WaitForChild(name)
 end
 
-local RE_EquipToolFromHotbar = GetRemote(RPath, "RE/EquipToolFromHotbar")
-local RF_ChargeFishingRod = GetRemote(RPath, "RF/ChargeFishingRod")
-local RF_RequestFishingMinigameStarted = GetRemote(RPath, "RF/RequestFishingMinigameStarted")
-local RE_FishingCompleted = GetRemote(RPath, "RE/FishingCompleted")
-local RF_CancelFishingInputs = GetRemote(RPath, "RF/CancelFishingInputs")
-local RF_UpdateAutoFishingState = GetRemote(RPath, "RF/UpdateAutoFishingState")
+local RE_Equip = GetRemote(RPath, "RE/EquipToolFromHotbar")
+local RF_Charge = GetRemote(RPath, "RF/ChargeFishingRod")
+local RF_Start = GetRemote(RPath, "RF/RequestFishingMinigameStarted")
+local RE_Complete = GetRemote(RPath, "RE/FishingCompleted")
+local RF_Cancel = GetRemote(RPath, "RF/CancelFishingInputs")
+local RF_Update = GetRemote(RPath, "RF/UpdateAutoFishingState")
 
--- ================= LEGIT AUTO FISH =================
+-- ================= LEGIT =================
 local FishingController = require(RepStorage.Controllers.FishingController)
 
-local AutoFishState = { Active = false, Minigame = false }
+local AutoFishState = {Active = false, Minigame = false}
 
 local function performClick()
     FishingController:RequestFishingMinigameClick()
     task.wait(SPEED_LEGIT)
 end
 
-local originalRodStarted = FishingController.FishingRodStarted
+local origRod = FishingController.FishingRodStarted
 FishingController.FishingRodStarted = function(self, ...)
-    originalRodStarted(self, ...)
+    origRod(self, ...)
     if AutoFishState.Active and not AutoFishState.Minigame then
         AutoFishState.Minigame = true
-        if legitClickThread then task.cancel(legitClickThread) end
         legitClickThread = task.spawn(function()
             while AutoFishState.Active and AutoFishState.Minigame do
                 performClick()
@@ -82,9 +81,9 @@ FishingController.FishingRodStarted = function(self, ...)
     end
 end
 
-local originalFishingStopped = FishingController.FishingStopped
+local origStop = FishingController.FishingStopped
 FishingController.FishingStopped = function(self, ...)
-    originalFishingStopped(self, ...)
+    origStop(self, ...)
     AutoFishState.Minigame = false
 end
 
@@ -98,11 +97,10 @@ function FishingAPI:SetLegit(state)
     AutoFishState.Active = state
 
     if state then
-        RF_UpdateAutoFishingState:InvokeServer(true)
-        if legitEquipThread then task.cancel(legitEquipThread) end
+        RF_Update:InvokeServer(true)
         legitEquipThread = task.spawn(function()
             while legitAutoState do
-                RE_EquipToolFromHotbar:FireServer(1)
+                RE_Equip:FireServer(1)
                 task.wait(0.1)
             end
         end)
@@ -112,15 +110,7 @@ function FishingAPI:SetLegit(state)
     end
 end
 
--- ================= NORMAL INSTANT =================
-local function runNormalInstant()
-    RF_ChargeFishingRod:InvokeServer(os.clock())
-    RF_RequestFishingMinigameStarted:InvokeServer(-139.63, 0.996)
-    task.wait(normalCompleteDelay)
-    RE_FishingCompleted:FireServer()
-    RF_CancelFishingInputs:InvokeServer()
-end
-
+-- ================= NORMAL =================
 function FishingAPI:SetNormalDelay(v)
     v = tonumber(v)
     if v then normalCompleteDelay = v end
@@ -132,14 +122,18 @@ function FishingAPI:SetNormal(state)
     if state then
         normalLoopThread = task.spawn(function()
             while normalInstantState do
-                runNormalInstant()
+                RF_Charge:InvokeServer(os.clock())
+                RF_Start:InvokeServer(-139.63, 0.996)
+                task.wait(normalCompleteDelay)
+                RE_Complete:FireServer()
+                RF_Cancel:InvokeServer()
                 task.wait(0.1)
             end
         end)
 
         normalEquipThread = task.spawn(function()
             while normalInstantState do
-                RE_EquipToolFromHotbar:FireServer(1)
+                RE_Equip:FireServer(1)
                 task.wait(0.1)
             end
         end)
@@ -149,20 +143,10 @@ function FishingAPI:SetNormal(state)
     end
 end
 
--- ================= BLATANT MODE =================
-local RS = RepStorage
-local Net = RS.Packages._Index["sleitnick_net@0.2.0"].net
+-- ================= BLATANT =================
 local FC = FishingController
-
-local RF_Charge = Net["RF/ChargeFishingRod"]
-local RF_Start = Net["RF/RequestFishingMinigameStarted"]
-local RE_Complete = Net["RE/FishingCompleted"]
-local RE_Equip = Net["RE/EquipToolFromHotbar"]
-local RF_Cancel = Net["RF/CancelFishingInputs"]
-local RF_Update = Net["RF/UpdateAutoFishingState"]
-
-local originalClick = FC.RequestFishingMinigameClick
-local originalCharge = FC.RequestChargeFishingRod
+local origClick = FC.RequestFishingMinigameClick
+local origCharge = FC.RequestChargeFishingRod
 
 local Blatant = {
     Active = false,
@@ -172,10 +156,6 @@ local Blatant = {
     AutoPerfect = false
 }
 
-local function EnsureServerReady()
-    RF_Update:InvokeServer(true)
-end
-
 local function SyncAutoPerfect()
     local enable = Blatant.Active and Blatant.Mode == "New"
     if enable and not Blatant.AutoPerfect then
@@ -184,23 +164,9 @@ local function SyncAutoPerfect()
         FC.RequestChargeFishingRod = function() end
     elseif not enable and Blatant.AutoPerfect then
         Blatant.AutoPerfect = false
-        FC.RequestFishingMinigameClick = originalClick
-        FC.RequestChargeFishingRod = originalCharge
+        FC.RequestFishingMinigameClick = origClick
+        FC.RequestChargeFishingRod = origCharge
     end
-end
-
-local function DoBlatantFish()
-    EnsureServerReady()
-    RE_Equip:FireServer(1)
-    task.wait(0.15)
-    RF_Charge:InvokeServer(math.huge)
-    RF_Start:InvokeServer(-139.6379, 0.9964)
-
-    task.delay(Blatant.CompleteDelay, function()
-        if Blatant.Active then
-            RE_Complete:FireServer()
-        end
-    end)
 end
 
 local function BlatantLoop()
@@ -212,18 +178,24 @@ local function BlatantLoop()
     end)
 
     while Blatant.Active do
-        DoBlatantFish()
+        RF_Update:InvokeServer(true)
+        RF_Charge:InvokeServer(math.huge)
+        RF_Start:InvokeServer(-139.6379, 0.9964)
+        task.delay(Blatant.CompleteDelay, function()
+            if Blatant.Active then
+                RE_Complete:FireServer()
+            end
+        end)
         task.wait(Blatant.CancelDelay)
         RF_Cancel:InvokeServer()
     end
 end
 
-function FishingAPI:SetBlatant(state)
+function FishingAPI:SetActive(state)
     Blatant.Active = state
     SyncAutoPerfect()
 
     if state then
-        if blatantLoopThread then task.cancel(blatantLoopThread) end
         blatantLoopThread = task.spawn(BlatantLoop)
     else
         if blatantLoopThread then task.cancel(blatantLoopThread) end
@@ -232,59 +204,35 @@ function FishingAPI:SetBlatant(state)
     end
 end
 
-function FishingAPI:SetBlatantMode(mode)
+function FishingAPI:SetMode(mode)
     Blatant.Mode = mode
     SyncAutoPerfect()
 end
 
-function FishingAPI:SetBlatantCancelDelay(v)
+function FishingAPI:SetCancelDelay(v)
     v = tonumber(v)
     if v then Blatant.CancelDelay = v end
 end
 
-function FishingAPI:SetBlatantCompleteDelay(v)
+function FishingAPI:SetCompleteDelay(v)
     v = tonumber(v)
     if v then Blatant.CompleteDelay = v end
 end
 
--- Blatant toggle
-function FishingAPI:SetActive(state)
-    self:SetBlatant(state)
-end
-
--- Blatant mode dropdown
-function FishingAPI:SetMode(mode)
-    self:SetBlatantMode(mode)
-end
-
--- Blatant cancel delay input
-function FishingAPI:SetCancelDelay(v)
-    self:SetBlatantCancelDelay(v)
-end
-
--- Blatant complete delay input
-function FishingAPI:SetCompleteDelay(v)
-    self:SetBlatantCompleteDelay(v)
-end
-
--- ================= AREA / SAVE / FREEZE =================
-function FishingAPI:SetSelectedArea(area)
-    selectedArea = area
+-- ================= AREA =================
+function FishingAPI:SetSelectedArea(v)
+    selectedArea = v
 end
 
 function FishingAPI:SaveCurrentPosition()
-    local hrp = self:GetHRP()
-    savedPosition = { Pos = hrp.Position, Look = hrp.CFrame.LookVector }
-    return savedPosition
-end
-
-function FishingAPI:GetSavedPosition()
+    local hrp = GetHRP()
+    savedPosition = {Pos = hrp.Position, Look = hrp.CFrame.LookVector}
     return savedPosition
 end
 
 function FishingAPI:SetTeleportFreeze(state, FishingAreas)
     isTeleportFreezeActive = state
-    local hrp = self:GetHRP()
+    local hrp = GetHRP()
     if not hrp then return false end
 
     if not state then
@@ -292,19 +240,15 @@ function FishingAPI:SetTeleportFreeze(state, FishingAreas)
         return true
     end
 
-    local areaData =
-        (selectedArea == "Custom: Saved" and savedPosition)
-        or FishingAreas[selectedArea]
+    local area = (selectedArea == "Custom: Saved" and savedPosition) or FishingAreas[selectedArea]
+    if not area then return false end
 
-    if not areaData then return false end
-
-    hrp.Anchored = false
-    self:TeleportToLookAt(areaData.Pos, areaData.Look)
+    TeleportToLookAt(area.Pos, area.Look)
 
     local start = os.clock()
     while os.clock() - start < 1.5 and isTeleportFreezeActive do
         hrp.AssemblyLinearVelocity = Vector3.zero
-        hrp.CFrame = CFrame.new(areaData.Pos, areaData.Pos + areaData.Look) * CFrame.new(0,0.5,0)
+        hrp.CFrame = CFrame.new(area.Pos, area.Pos + area.Look) * CFrame.new(0,0.5,0)
         RunService.Heartbeat:Wait()
     end
 
@@ -313,13 +257,9 @@ function FishingAPI:SetTeleportFreeze(state, FishingAreas)
 end
 
 function FishingAPI:TeleportToArea(FishingAreas)
-    if not selectedArea then return false end
-    local areaData =
-        (selectedArea == "Custom: Saved" and savedPosition)
-        or FishingAreas[selectedArea]
-
-    if not areaData then return false end
-    return self:TeleportToLookAt(areaData.Pos, areaData.Look)
+    local area = (selectedArea == "Custom: Saved" and savedPosition) or FishingAreas[selectedArea]
+    if not area then return false end
+    return TeleportToLookAt(area.Pos, area.Look)
 end
 
 return FishingAPI
