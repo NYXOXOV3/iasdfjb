@@ -48,6 +48,193 @@ local function getHRP()
 end
 
 -- =========================================================
+-- STREAM
+-- =========================================================
+
+-- HIDE USERNAME / SOLACE DISGUISE
+function PlayerAPI:SetHideUsername(state)
+    _G.SolaceDisguise = state
+
+    if not state then
+        if getgenv().SolaceConfig then
+            getgenv().SolaceConfig.Enabled = false
+        end
+        warn("[Solace] Disabled (rejoin required to fully revert)")
+        return
+    end
+
+    -- =========================
+    -- CONFIG
+    -- =========================
+    if not getgenv().SolaceConfig then
+        getgenv().SolaceConfig = {
+            Headless = false,
+            FakeDisplayName = "Solace",
+            FakeName = "Solace",
+            FakeId = 13886182,
+            Enabled = true
+        }
+    else
+        local cfg = getgenv().SolaceConfig
+        cfg.FakeDisplayName = "Solace"
+        cfg.FakeName = "Solace"
+        cfg.FakeId = 13886182
+        cfg.Enabled = true
+    end
+
+    local Players = game:GetService("Players")
+    local lp = Players.LocalPlayer
+
+    -- =========================
+    -- SAVE ORIGINAL DATA
+    -- =========================
+    if not _G.OriginalPlayerData then
+        _G.OriginalPlayerData = {
+            UserId = tostring(lp.UserId),
+            Name = lp.Name,
+            DisplayName = lp.DisplayName
+        }
+    end
+
+    -- =========================
+    -- TEXT PROCESSOR
+    -- =========================
+    local function processtext(text)
+        if not text or text == "" then return text end
+
+        text = string.gsub(text, _G.OriginalPlayerData.Name, getgenv().SolaceConfig.FakeName)
+        text = string.gsub(text, _G.OriginalPlayerData.UserId, tostring(getgenv().SolaceConfig.FakeId))
+        text = string.gsub(text, _G.OriginalPlayerData.DisplayName, getgenv().SolaceConfig.FakeDisplayName)
+
+        return text
+    end
+
+    local function processTextElement(el)
+        if not (el:IsA("TextLabel") or el:IsA("TextButton") or el:IsA("TextBox")) then return end
+        if el:GetAttribute("SolaceTextConnected") then return end
+
+        el:SetAttribute("SolaceTextConnected", true)
+        el.Text = processtext(el.Text)
+
+        el:GetPropertyChangedSignal("Text"):Connect(function()
+            el.Text = processtext(el.Text)
+        end)
+    end
+
+    local function processAllText()
+        for _, v in ipairs(game:GetDescendants()) do
+            processTextElement(v)
+        end
+    end
+
+    -- =========================
+    -- CHARACTER DISGUISE
+    -- =========================
+    local function disguisechar(char, id)
+        if not char then return end
+
+        task.spawn(function()
+            local hum = char:WaitForChild("Humanoid", 5)
+            local head = char:WaitForChild("Head", 5)
+            if not hum or not head then return end
+
+            local desc
+            repeat
+                task.wait(1)
+            until pcall(function()
+                desc = Players:GetHumanoidDescriptionFromUserId(id)
+            end)
+
+            local originalDesc = hum:FindFirstChildOfClass("HumanoidDescription")
+            if originalDesc then
+                desc.HeightScale = originalDesc.HeightScale
+            end
+
+            char.Archivable = true
+            local clone = char:Clone()
+            clone.Parent = workspace
+
+            for _, v in ipairs(clone:GetChildren()) do
+                if v:IsA("Accessory") or v:IsA("Shirt") or v:IsA("Pants") or v:IsA("ShirtGraphic") then
+                    v:Destroy()
+                end
+            end
+
+            clone.Humanoid:ApplyDescriptionClientServer(desc)
+
+            for _, v in ipairs(char:GetChildren()) do
+                if v:IsA("Accessory") or v:IsA("Shirt") or v:IsA("Pants") or v:IsA("BodyColors") then
+                    v.Parent = game
+                end
+            end
+
+            if not _G.SolaceChildAddedConnection then
+                _G.SolaceChildAddedConnection = char.ChildAdded:Connect(function(v)
+                    if v:IsA("Accessory") or v:IsA("Shirt") or v:IsA("Pants") then
+                        v.Parent = game
+                    end
+                end)
+            end
+
+            for _, v in ipairs(clone:GetChildren()) do
+                if v:IsA("Accessory") or v:IsA("Shirt") or v:IsA("Pants") or v:IsA("BodyColors") then
+                    v.Parent = char
+                end
+            end
+
+            clone:Destroy()
+        end)
+    end
+
+    -- =========================
+    -- APPLY
+    -- =========================
+    processAllText()
+
+    if not _G.SolaceDescendantConnection then
+        _G.SolaceDescendantConnection =
+            game.DescendantAdded:Connect(processTextElement)
+    end
+
+    if lp.Character then
+        task.delay(1, function()
+            disguisechar(lp.Character, getgenv().SolaceConfig.FakeId)
+        end)
+    end
+
+    if not _G.SolaceCharacterConnection then
+        _G.SolaceCharacterConnection =
+            lp.CharacterAdded:Connect(function(char)
+                task.wait(2)
+                processAllText()
+                disguisechar(char, getgenv().SolaceConfig.FakeId)
+            end)
+    end
+
+    print("[Solace] Hide Username enabled (persistent)")
+end
+
+
+function PlayerAPI:ResetCharacterInPlace()
+    local char = LocalPlayer.Character
+    local hrp = char and char:FindFirstChild("HumanoidRootPart")
+    local hum = char and char:FindFirstChildOfClass("Humanoid")
+    if not hrp or not hum then return end
+
+    local lastPos = hrp.Position
+    hum.Health = 0
+
+    LocalPlayer.CharacterAdded:Wait()
+    task.wait(0.5)
+
+    local newHRP =
+        LocalPlayer.Character:WaitForChild("HumanoidRootPart", 5)
+    if newHRP then
+        newHRP.CFrame = CFrame.new(lastPos + Vector3.new(0, 3, 0))
+    end
+end
+
+-- =========================================================
 -- MOVEMENT
 -- =========================================================
 function PlayerAPI:SetWalkSpeed(value)
@@ -144,56 +331,6 @@ function PlayerAPI:SetNoClip(enabled)
         end
     end
 end
-
--- =========================================================
--- FLY (SIMPLE & STABLE)
--- =========================================================
-function PlayerAPI:SetFly(enabled, speed)
-    speed = speed or 60
-    state.Fly = enabled
-
-    local hrp = getHRP()
-    local hum = getHumanoid()
-    if not hrp or not hum then return end
-
-    if enabled then
-        local bg = Instance.new("BodyGyro")
-        bg.P = 9e4
-        bg.MaxTorque = Vector3.new(9e9, 9e9, 9e9)
-        bg.CFrame = hrp.CFrame
-        bg.Parent = hrp
-
-        local bv = Instance.new("BodyVelocity")
-        bv.MaxForce = Vector3.new(9e9, 9e9, 9e9)
-        bv.Parent = hrp
-
-        connections.Fly = RunService.RenderStepped:Connect(function()
-            local cam = workspace.CurrentCamera
-            bg.CFrame = cam.CFrame
-
-            local move = hum.MoveDirection
-            if UserInputService:IsKeyDown(Enum.KeyCode.Space) then
-                move += Vector3.new(0, 1, 0)
-            elseif UserInputService:IsKeyDown(Enum.KeyCode.LeftControl) then
-                move -= Vector3.new(0, 1, 0)
-            end
-
-            bv.Velocity = move.Magnitude > 0 and move.Unit * speed or Vector3.zero
-        end)
-
-        connections.FlyBG = bg
-        connections.FlyBV = bv
-    else
-        if connections.Fly then connections.Fly:Disconnect() end
-        if connections.FlyBG then connections.FlyBG:Destroy() end
-        if connections.FlyBV then connections.FlyBV:Destroy() end
-
-        connections.Fly = nil
-        connections.FlyBG = nil
-        connections.FlyBV = nil
-    end
-end
-
 -- =========================
 -- WALK ON WATER
 -- =========================
@@ -302,29 +439,6 @@ Players.PlayerAdded:Connect(function(plr)
         PlayerAPI:_UpdateESP(plr)
     end)
 end)
-
--- =========================
--- RESET CHARACTER
--- =========================
-function PlayerAPI:ResetCharacterInPlace()
-    local char = LocalPlayer.Character
-    local hrp = char and char:FindFirstChild("HumanoidRootPart")
-    local hum = char and char:FindFirstChildOfClass("Humanoid")
-    if not hrp or not hum then return end
-
-    local lastPos = hrp.Position
-    hum.Health = 0
-
-    LocalPlayer.CharacterAdded:Wait()
-    task.wait(0.5)
-
-    local newHRP =
-        LocalPlayer.Character:WaitForChild("HumanoidRootPart", 5)
-    if newHRP then
-        newHRP.CFrame = CFrame.new(lastPos + Vector3.new(0, 3, 0))
-    end
-end
-
 
 -- =========================================================
 -- CLEANUP (ANTI LEAK)
