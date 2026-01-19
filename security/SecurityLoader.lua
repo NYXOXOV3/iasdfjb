@@ -10,7 +10,6 @@ SecurityLoader.Config = {
     API_FLAGS = {
         INFO = true,
         PLAYER = true,
-        --SETTINGS = false,
         --FISHING = true,
         --AUTOMATIC = true,
         --TELEPORT = true,
