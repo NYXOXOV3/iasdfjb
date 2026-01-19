@@ -16,13 +16,6 @@ return function(Window, PlayerAPI, WindUI)
     })
 
     -- =========================
-    -- Security
-    -- =========================
-    local security = tab:Section({ Title = "Security" })
-
-    security
-
-    -- =========================
     -- MOVEMENT
     -- =========================
     local movement = tab:Section({ Title = "Movement" })
