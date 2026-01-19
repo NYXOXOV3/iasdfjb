@@ -105,7 +105,7 @@ end
 
 APIs.Info          = loadAPI("INFO", "methode/info/InfoAPI.lua")
 APIs.Settings        = loadAPI("SETTINGS", "methode/settings/SettingsAPI.lua")
---APIs.Fishing       = loadAPI("FISHING", "methode/fishing/FishingAPI.lua")
+APIs.Fishing       = loadAPI("FISHING", "methode/fishing/FishingAPI.lua")
 --APIs.Automatic     = loadAPI("AUTOMATIC", "methode/automatic/AutomaticAPI.lua")
 --APIs.Teleport      = loadAPI("TELEPORT", "methode/teleport/TeleportAPI.lua")
 --APIs.Shop          = loadAPI("SHOP", "methode/shop/ShopAPI.lua")
@@ -174,7 +174,7 @@ end
 
 loadTab("ui/InfoTab.lua", APIs.Info)
 loadTab("ui/SettingsTab.lua", APIs.Settings)
---loadTab("ui/FishingTab.lua", APIs.Fishing)
+loadTab("ui/FishingTab.lua", APIs.Fishing)
 --loadTab("ui/AutomaticTab.lua", APIs.Automatic)
 --loadTab("ui/TeleportTab.lua", APIs.Teleport)
 --loadTab("ui/ShopTab.lua", APIs.Shop)
