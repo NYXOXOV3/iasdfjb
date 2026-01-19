@@ -143,9 +143,9 @@ local Window = WindUI:CreateWindow({
     SideBarWidth = 190,
     HideSearchBar = true,
     ScrollBarEnabled = true,
-    SetToggleKey(Enum.KeyCode.G)
-    SetBackgroundImage("rbxassetid://137263312772667")
 })
+
+Window:SetToggleKey(Enum.KeyCode.G)
 
 Window:Tag({
     Title = "v1.0.3",
