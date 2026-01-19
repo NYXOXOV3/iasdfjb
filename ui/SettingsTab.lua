@@ -79,12 +79,6 @@ return function(Window, PlayerAPI, WindUI)
         end
     })
     
-    --movement:Toggle({
-    --    Title = "Freeze Player",
-    --    Callback = function(state)
-    --        PlayerAPI:SetFreeze(state)
-    --    end
-    --})
     movement:Divider()
     -- =========================
     -- MODES
@@ -116,6 +110,13 @@ return function(Window, PlayerAPI, WindUI)
         Title = "Infinite Zoom",
         Callback = function(state)
             PlayerAPI:SetInfiniteZoom(state)
+        end
+    })
+
+    ability:Toggle({
+        Title = "Freeze Player",
+        Callback = function(state)
+            PlayerAPI:SetFreeze(state)
         end
     })
     ability:Divider()
