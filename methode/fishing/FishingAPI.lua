@@ -177,9 +177,10 @@ function FishingAPI:SetNormal(state)
 end
 
 -- ================= BLATANT MODE =================
-local RS = RepStorage
+
+local RS = game:GetService("ReplicatedStorage")
 local Net = RS.Packages._Index["sleitnick_net@0.2.0"].net
-local FC = FishingController
+local FC = require(RS.Controllers.FishingController)
 
 local RF_Charge   = Net["RF/ChargeFishingRod"]
 local RF_Start    = Net["RF/RequestFishingMinigameStarted"]
@@ -191,7 +192,7 @@ local RF_Update   = Net["RF/UpdateAutoFishingState"]
 local originalClick  = FC.RequestFishingMinigameClick
 local originalCharge = FC.RequestChargeFishingRod
 
-local BlatantConfig = {
+local Config = {
     Active = false,
     Mode = "Old",
     CancelDelay = 1.75,
@@ -199,47 +200,93 @@ local BlatantConfig = {
     AutoPerfect = false
 }
 
+local mainThread, equipThread
+
+-- ================= SERVER READY =================
+local function EnsureServerReady()
+    pcall(function()
+        RF_Update:InvokeServer(true)
+    end)
+end
+
+-- ================= AUTO PERFECT =================
 local function SyncAutoPerfect()
-    if BlatantConfig.Active and BlatantConfig.Mode == "New" then
+    local shouldEnable = Config.Active and Config.Mode == "New"
+
+    if shouldEnable and not Config.AutoPerfect then
+        Config.AutoPerfect = true
         FC.RequestFishingMinigameClick = function() end
         FC.RequestChargeFishingRod = function() end
-        BlatantConfig.AutoPerfect = true
-    else
+
+    elseif not shouldEnable and Config.AutoPerfect then
+        Config.AutoPerfect = false
+        pcall(function() RF_Update:InvokeServer(false) end)
         FC.RequestFishingMinigameClick = originalClick
         FC.RequestChargeFishingRod = originalCharge
-        BlatantConfig.AutoPerfect = false
     end
 end
 
-function FishingAPI:SetBlatant(state)
-    BlatantConfig.Active = state
+-- ================= CORE =================
+local function DoFish()
+    task.spawn(function()
+        EnsureServerReady()
+        RE_Equip:FireServer(1)
+        task.wait(0.15)
+        RF_Charge:InvokeServer(math.huge)
+        RF_Start:InvokeServer(-139.6379699707, 0.99647927980797)
+    end)
+
+    task.spawn(function()
+        task.wait(Config.CompleteDelay)
+        if Config.Active then
+            pcall(RE_Complete.FireServer, RE_Complete)
+        end
+    end)
+end
+
+local function Loop()
+    equipThread = task.spawn(function()
+        while Config.Active do
+            RE_Equip:FireServer(1)
+            task.wait(0.1)
+        end
+    end)
+
+    while Config.Active do
+        DoFish()
+        task.wait(Config.CancelDelay)
+        pcall(RF_Cancel.InvokeServer, RF_Cancel)
+    end
+end
+
+-- ================= PUBLIC API =================
+function BlatantAPI:SetActive(state)
+    Config.Active = state
     SyncAutoPerfect()
 
     if state then
-        blatantLoopThread = task.spawn(function()
-            while BlatantConfig.Active do
-                RF_Cancel:InvokeServer()
-                RF_Charge:InvokeServer(math.huge)
-                RF_Start:InvokeServer(-139.6379699707, 0.99647927980797)
-                task.wait(BlatantConfig.CompleteDelay)
-                RE_Complete:FireServer()
-                task.wait(BlatantConfig.CancelDelay)
-            end
-        end)
+        EnsureServerReady()
+        if mainThread then task.cancel(mainThread) end
+        mainThread = task.spawn(Loop)
     else
-        if blatantLoopThread then task.cancel(blatantLoopThread) end
-        pcall(function() RF_Cancel:InvokeServer() end)
+        if mainThread then task.cancel(mainThread) end
+        if equipThread then task.cancel(equipThread) end
+        mainThread, equipThread = nil, nil
+        pcall(RF_Cancel.InvokeServer, RF_Cancel)
     end
 end
 
-function FishingAPI:SetBlatantMode(m)
-    BlatantConfig.Mode = m
+function BlatantAPI:SetMode(mode)
+    Config.Mode = mode
     SyncAutoPerfect()
 end
 
-function FishingAPI:SetBlatantDelays(cancel, complete)
-    if cancel then BlatantConfig.CancelDelay = cancel end
-    if complete then BlatantConfig.CompleteDelay = complete end
+function BlatantAPI:SetCancelDelay(v)
+    if tonumber(v) then Config.CancelDelay = tonumber(v) end
+end
+
+function BlatantAPI:SetCompleteDelay(v)
+    if tonumber(v) then Config.CompleteDelay = tonumber(v) end
 end
 
 -- ================= AREA / SAVE / FREEZE =================
