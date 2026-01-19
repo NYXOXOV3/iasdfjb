@@ -25,6 +25,7 @@ local state = {
     InfiniteJump = false,
     NoClip = false,
     Fly = false,
+    WalkOnWater = false,
 }
 
 local connections = {}
@@ -192,6 +193,138 @@ function PlayerAPI:SetFly(enabled, speed)
         connections.FlyBV = nil
     end
 end
+
+-- =========================
+-- WALK ON WATER
+-- =========================
+local waterConn
+local waterPlatform
+
+function PlayerAPI:SetWalkOnWater(enabled)
+    state.WalkOnWater = enabled
+
+    if enabled then
+        if not waterPlatform then
+            waterPlatform = Instance.new("Part")
+            waterPlatform.Anchored = true
+            waterPlatform.CanCollide = true
+            waterPlatform.Transparency = 1
+            waterPlatform.Size = Vector3.new(15, 1, 15)
+            waterPlatform.Parent = workspace
+        end
+
+        waterConn = RunService.RenderStepped:Connect(function()
+            local char = LocalPlayer.Character
+            local hrp = char and char:FindFirstChild("HumanoidRootPart")
+            if not hrp then return end
+
+            local rayParams = RaycastParams.new()
+            rayParams.FilterDescendantsInstances = { workspace.Terrain }
+            rayParams.FilterType = Enum.RaycastFilterType.Include
+            rayParams.IgnoreWater = false
+
+            local result = workspace:Raycast(
+                hrp.Position + Vector3.new(0, 5, 0),
+                Vector3.new(0, -500, 0),
+                rayParams
+            )
+
+            if result and result.Material == Enum.Material.Water then
+                waterPlatform.Position =
+                    Vector3.new(hrp.Position.X, result.Position.Y, hrp.Position.Z)
+
+                if hrp.Position.Y < result.Position.Y + 2 then
+                    hrp.CFrame =
+                        CFrame.new(hrp.Position.X, result.Position.Y + 3.2, hrp.Position.Z)
+                end
+            else
+                waterPlatform.Position = Vector3.new(0, -500, 0)
+            end
+        end)
+    else
+        if waterConn then waterConn:Disconnect() waterConn = nil end
+        if waterPlatform then waterPlatform:Destroy() waterPlatform = nil end
+    end
+end
+
+-- =========================
+-- PLAYER ESP
+-- =========================
+local espEnabled = false
+local espCache = {}
+
+function PlayerAPI:SetESP(enabled)
+    espEnabled = enabled
+
+    for _, plr in ipairs(Players:GetPlayers()) do
+        if plr ~= LocalPlayer then
+            PlayerAPI:_UpdateESP(plr)
+        end
+    end
+end
+
+function PlayerAPI:_UpdateESP(plr)
+    if not espEnabled then
+        if espCache[plr] then
+            espCache[plr]:Destroy()
+            espCache[plr] = nil
+        end
+        return
+    end
+
+    local char = plr.Character
+    local hrp = char and char:FindFirstChild("HumanoidRootPart")
+    if not hrp then return end
+
+    if espCache[plr] then return end
+
+    local gui = Instance.new("BillboardGui")
+    gui.Name = "NYXHUB_ESP"
+    gui.Adornee = hrp
+    gui.Size = UDim2.new(0, 140, 0, 40)
+    gui.StudsOffset = Vector3.new(0, 2.5, 0)
+    gui.AlwaysOnTop = true
+    gui.Parent = hrp
+
+    local label = Instance.new("TextLabel", gui)
+    label.Size = UDim2.fromScale(1, 1)
+    label.BackgroundTransparency = 1
+    label.TextScaled = true
+    label.Font = Enum.Font.GothamBold
+    label.TextColor3 = Color3.fromRGB(255, 230, 230)
+    label.Text = plr.DisplayName or plr.Name
+
+    espCache[plr] = gui
+end
+Players.PlayerAdded:Connect(function(plr)
+    plr.CharacterAdded:Connect(function()
+        wait(1)
+        PlayerAPI:_UpdateESP(plr)
+    end)
+end)
+
+-- =========================
+-- RESET CHARACTER
+-- =========================
+function PlayerAPI:ResetCharacterInPlace()
+    local char = LocalPlayer.Character
+    local hrp = char and char:FindFirstChild("HumanoidRootPart")
+    local hum = char and char:FindFirstChildOfClass("Humanoid")
+    if not hrp or not hum then return end
+
+    local lastPos = hrp.Position
+    hum.Health = 0
+
+    LocalPlayer.CharacterAdded:Wait()
+    task.wait(0.5)
+
+    local newHRP =
+        LocalPlayer.Character:WaitForChild("HumanoidRootPart", 5)
+    if newHRP then
+        newHRP.CFrame = CFrame.new(lastPos + Vector3.new(0, 3, 0))
+    end
+end
+
 
 -- =========================================================
 -- CLEANUP (ANTI LEAK)
