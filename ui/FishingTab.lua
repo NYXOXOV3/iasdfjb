@@ -136,30 +136,7 @@ return function(Window, FishingAPI, WindUI, FishingAreas, AreaNames)
         end
     })
 
-    -- Stats Display using Paragraph
-    local statsParagraph = blatantv2:Paragraph({
-        Title = "📊 Current Stats",
-        Content = "Status: Inactive\nMode: None\nSpeed: 0 fish/sec\nCycle: 0ms"
-    })
-
-    -- Update stats automatically
-    task.spawn(function()
-        while task.wait(1) do
-            local stats = FishingAPI:GetBlatantV2Stats()
-            if stats.Active then
-                statsParagraph:Set({
-                    Content = string.format(
-                        "Status: 🟢 ACTIVE\nMode: %s\nSpeed: %s\nCycle: %s",
-                        stats.Mode, stats.Speed, stats.CycleTime
-                    )
-                })
-            else
-                statsParagraph:Set({
-                    Content = "Status: 🔴 INACTIVE\nMode: None\nSpeed: 0 fish/sec\nCycle: 0ms"
-                })
-            end
-        end
-    end)
+    
 
     -- Emergency Stop Button
     blatantv2:Button({
