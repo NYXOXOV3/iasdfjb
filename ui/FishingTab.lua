@@ -51,18 +51,11 @@ autofish:Toggle({
 
 local blatant = farm:Section({ Title = "Blatant Mode" })
 
-blatant:Toggle({
-    Title = "Instant Fishing (Blatant)",
-    Callback = function(v)
-        FishingAPI:SetBlatant(v)
-    end
-})
-
 blatant:Dropdown({
     Title = "Blatant Mode",
     Values = { "Old", "New" },
-    Callback = function(v)
-        FishingAPI:SetBlatantMode(v)
+    Callback = function(mode)
+        FishingAPI:SetMode(mode)
     end
 })
 
@@ -70,7 +63,7 @@ blatant:Input({
     Title = "Cancel Delay",
     Default = "1.75",
     Callback = function(v)
-        FishingAPI:SetBlatantDelays(tonumber(v), nil)
+        FishingAPI:SetCancelDelay(v)
     end
 })
 
@@ -78,10 +71,16 @@ blatant:Input({
     Title = "Complete Delay",
     Default = "1.33",
     Callback = function(v)
-        FishingAPI:SetBlatantDelays(nil, tonumber(v))
+        FishingAPI:SetCompleteDelay(v)
     end
 })
-
+    
+blatant:Toggle({
+    Title = "Instant Fishing (Blatant)",
+    Callback = function(state)
+        FishingAPI:SetActive(state)
+    end
+})
 farm:Divider()
 
 local areafish = farm:Section({ Title = "Fishing Area" })
