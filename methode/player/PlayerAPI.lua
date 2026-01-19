@@ -1,24 +1,26 @@
 -- =========================================================
--- PLAYER API - NYXHUB (FULL FINAL)
+-- PLAYER API
+-- NYXHUB - Fish It
 -- =========================================================
 
 local PlayerAPI = {}
 
+-- =========================================================
 -- SERVICES
+-- =========================================================
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
-local StarterGui = game:GetService("StarterGui")
 
 local LocalPlayer = Players.LocalPlayer
-local STUD_TO_M = 0.28
 
 -- =========================================================
 -- INTERNAL STATE
 -- =========================================================
 local state = {
-    WalkSpeed = 16,
-    JumpPower = 50,
+    WalkSpeed = nil,
+    JumpPower = nil,
+
     Frozen = false,
     InfiniteJump = false,
     NoClip = false,
@@ -31,295 +33,556 @@ local connections = {}
 -- =========================================================
 -- HELPERS
 -- =========================================================
-local function getChar()
+local function getCharacter()
     return LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
 end
 
-local function getHum()
-    return getChar():FindFirstChildOfClass("Humanoid")
+local function getHumanoid()
+    local char = getCharacter()
+    return char:FindFirstChildOfClass("Humanoid")
 end
 
 local function getHRP()
-    return getChar():WaitForChild("HumanoidRootPart")
+    local char = getCharacter()
+    return char:WaitForChild("HumanoidRootPart")
 end
 
 -- =========================================================
 -- MOVEMENT
 -- =========================================================
-function PlayerAPI:SetWalkSpeed(v)
-    local h = getHum()
-    if h then h.WalkSpeed = v end
-    state.WalkSpeed = v
+function PlayerAPI:SetWalkSpeed(value)
+    local hum = getHumanoid()
+    if hum then
+        hum.WalkSpeed = value
+        state.WalkSpeed = value
+    end
 end
 
-function PlayerAPI:SetJumpPower(v)
-    local h = getHum()
-    if h then h.JumpPower = v end
-    state.JumpPower = v
+function PlayerAPI:SetJumpPower(value)
+    local hum = getHumanoid()
+    if hum then
+        hum.JumpPower = value
+        state.JumpPower = value
+    end
 end
 
 function PlayerAPI:ResetMovement()
-    self:SetWalkSpeed(16)
-    self:SetJumpPower(50)
+    local hum = getHumanoid()
+    if hum then
+        hum.WalkSpeed = 16
+        hum.JumpPower = 50
+        state.WalkSpeed = 16
+        state.JumpPower = 50
+    end
 end
 
 -- =========================================================
 -- FREEZE
 -- =========================================================
-function PlayerAPI:SetFreeze(v)
+function PlayerAPI:SetFreeze(enabled)
     local hrp = getHRP()
-    hrp.Anchored = v
+    if not hrp then return end
+
+    hrp.Anchored = enabled
     hrp.AssemblyLinearVelocity = Vector3.zero
     hrp.Velocity = Vector3.zero
-    state.Frozen = v
+
+    state.Frozen = enabled
 end
 
 -- =========================================================
 -- INFINITE JUMP
 -- =========================================================
-function PlayerAPI:SetInfiniteJump(v)
-    state.InfiniteJump = v
-    if v then
+function PlayerAPI:SetInfiniteJump(enabled)
+    state.InfiniteJump = enabled
+
+    if enabled then
         connections.InfJump = UserInputService.JumpRequest:Connect(function()
-            local h = getHum()
-            if h and h.Health > 0 then
-                h:ChangeState(Enum.HumanoidStateType.Jumping)
+            local hum = getHumanoid()
+            if hum and hum.Health > 0 then
+                hum:ChangeState(Enum.HumanoidStateType.Jumping)
             end
         end)
-    elseif connections.InfJump then
-        connections.InfJump:Disconnect()
-        connections.InfJump = nil
+    else
+        if connections.InfJump then
+            connections.InfJump:Disconnect()
+            connections.InfJump = nil
+        end
     end
 end
 
 -- =========================================================
 -- NO CLIP
 -- =========================================================
-function PlayerAPI:SetNoClip(v)
-    state.NoClip = v
-    if v then
+function PlayerAPI:SetNoClip(enabled)
+    state.NoClip = enabled
+
+    if enabled then
         connections.NoClip = RunService.Stepped:Connect(function()
-            local c = LocalPlayer.Character
-            if not c then return end
-            for _, p in ipairs(c:GetDescendants()) do
-                if p:IsA("BasePart") then p.CanCollide = false end
+            local char = LocalPlayer.Character
+            if not char then return end
+
+            for _, part in ipairs(char:GetDescendants()) do
+                if part:IsA("BasePart") then
+                    part.CanCollide = false
+                end
             end
         end)
-    elseif connections.NoClip then
-        connections.NoClip:Disconnect()
-        connections.NoClip = nil
+    else
+        if connections.NoClip then
+            connections.NoClip:Disconnect()
+            connections.NoClip = nil
+        end
+
+        local char = LocalPlayer.Character
+        if char then
+            for _, part in ipairs(char:GetDescendants()) do
+                if part:IsA("BasePart") then
+                    part.CanCollide = true
+                end
+            end
+        end
     end
 end
 
 -- =========================================================
--- FLY
+-- FLY (SIMPLE & STABLE)
 -- =========================================================
-function PlayerAPI:SetFly(v, speed)
+function PlayerAPI:SetFly(enabled, speed)
     speed = speed or 60
-    state.Fly = v
+    state.Fly = enabled
 
-    local hrp, hum = getHRP(), getHum()
+    local hrp = getHRP()
+    local hum = getHumanoid()
     if not hrp or not hum then return end
 
-    if v then
-        local bg = Instance.new("BodyGyro", hrp)
+    if enabled then
+        local bg = Instance.new("BodyGyro")
         bg.P = 9e4
-        bg.MaxTorque = Vector3.new(9e9,9e9,9e9)
+        bg.MaxTorque = Vector3.new(9e9, 9e9, 9e9)
+        bg.CFrame = hrp.CFrame
+        bg.Parent = hrp
 
-        local bv = Instance.new("BodyVelocity", hrp)
-        bv.MaxForce = Vector3.new(9e9,9e9,9e9)
+        local bv = Instance.new("BodyVelocity")
+        bv.MaxForce = Vector3.new(9e9, 9e9, 9e9)
+        bv.Parent = hrp
 
         connections.Fly = RunService.RenderStepped:Connect(function()
-            bg.CFrame = workspace.CurrentCamera.CFrame
+            local cam = workspace.CurrentCamera
+            bg.CFrame = cam.CFrame
+
             local move = hum.MoveDirection
             if UserInputService:IsKeyDown(Enum.KeyCode.Space) then
-                move += Vector3.new(0,1,0)
+                move += Vector3.new(0, 1, 0)
             elseif UserInputService:IsKeyDown(Enum.KeyCode.LeftControl) then
-                move -= Vector3.new(0,1,0)
+                move -= Vector3.new(0, 1, 0)
             end
+
             bv.Velocity = move.Magnitude > 0 and move.Unit * speed or Vector3.zero
         end)
 
         connections.FlyBG = bg
         connections.FlyBV = bv
     else
-        for _, k in ipairs({"Fly","FlyBG","FlyBV"}) do
-            if connections[k] then
-                if typeof(connections[k])=="RBXScriptConnection" then
-                    connections[k]:Disconnect()
-                else
-                    connections[k]:Destroy()
-                end
-                connections[k]=nil
-            end
-        end
+        if connections.Fly then connections.Fly:Disconnect() end
+        if connections.FlyBG then connections.FlyBG:Destroy() end
+        if connections.FlyBV then connections.FlyBV:Destroy() end
+
+        connections.Fly = nil
+        connections.FlyBG = nil
+        connections.FlyBV = nil
     end
 end
 
--- =========================================================
+-- =========================
 -- WALK ON WATER
--- =========================================================
-local waterConn, waterPart
+-- =========================
+local waterConn
+local waterPlatform
 
-function PlayerAPI:SetWalkOnWater(v)
-    state.WalkOnWater = v
+function PlayerAPI:SetWalkOnWater(enabled)
+    state.WalkOnWater = enabled
 
-    if v then
-        waterPart = Instance.new("Part")
-        waterPart.Anchored = true
-        waterPart.CanCollide = true
-        waterPart.Transparency = 1
-        waterPart.Size = Vector3.new(18,1,18)
-        waterPart.Parent = workspace
+    if enabled then
+        if not waterPlatform then
+            waterPlatform = Instance.new("Part")
+            waterPlatform.Anchored = true
+            waterPlatform.CanCollide = true
+            waterPlatform.Transparency = 1
+            waterPlatform.Size = Vector3.new(15, 1, 15)
+            waterPlatform.Parent = workspace
+        end
 
         waterConn = RunService.RenderStepped:Connect(function()
-            local hrp = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+            local char = LocalPlayer.Character
+            local hrp = char and char:FindFirstChild("HumanoidRootPart")
             if not hrp then return end
 
-            local params = RaycastParams.new()
-            params.FilterDescendantsInstances = {workspace.Terrain}
-            params.FilterType = Enum.RaycastFilterType.Include
-            params.IgnoreWater = false
+            local rayParams = RaycastParams.new()
+            rayParams.FilterDescendantsInstances = { workspace.Terrain }
+            rayParams.FilterType = Enum.RaycastFilterType.Include
+            rayParams.IgnoreWater = false
 
-            local res = workspace:Raycast(hrp.Position+Vector3.new(0,5,0),Vector3.new(0,-500,0),params)
-            if res and res.Material == Enum.Material.Water then
-                waterPart.Position = Vector3.new(hrp.Position.X,res.Position.Y,hrp.Position.Z)
-                if hrp.Position.Y < res.Position.Y+2 then
-                    hrp.CFrame = CFrame.new(hrp.Position.X,res.Position.Y+3.2,hrp.Position.Z)
+            local result = workspace:Raycast(
+                hrp.Position + Vector3.new(0, 5, 0),
+                Vector3.new(0, -500, 0),
+                rayParams
+            )
+
+            if result and result.Material == Enum.Material.Water then
+                waterPlatform.Position =
+                    Vector3.new(hrp.Position.X, result.Position.Y, hrp.Position.Z)
+
+                if hrp.Position.Y < result.Position.Y + 2 then
+                    hrp.CFrame =
+                        CFrame.new(hrp.Position.X, result.Position.Y + 3.2, hrp.Position.Z)
                 end
             else
-                waterPart.Position = Vector3.new(0,-500,0)
+                waterPlatform.Position = Vector3.new(0, -500, 0)
             end
         end)
     else
-        if waterConn then waterConn:Disconnect() waterConn=nil end
-        if waterPart then waterPart:Destroy() waterPart=nil end
+        if waterConn then waterConn:Disconnect() waterConn = nil end
+        if waterPlatform then waterPlatform:Destroy() waterPlatform = nil end
     end
 end
 
--- =========================================================
--- STREAMER MODE (SELF / SELECTED / ALL)
--- =========================================================
-local hideState = {
-    Enabled=false,
-    Mode="SELF",
-    Targets={},
-    Name=".gg/NYXHUB",
-    Level="Lvl. 969"
-}
+-- =========================
+-- PLAYER ESP
+-- =========================
+local espEnabled = false
+local espCache = {}
 
-local hideConn
-
-local function isTarget(plr)
-    if hideState.Mode=="ALL" then return true end
-    if hideState.Mode=="SELF" then return plr==LocalPlayer end
-    if hideState.Mode=="SELECTED" then return hideState.Targets[plr] end
+-- Fungsi untuk menghitung jarak
+local function CalculateDistance(position)
+    local localChar = LocalPlayer.Character
+    local localHrp = localChar and localChar:FindFirstChild("HumanoidRootPart")
+    
+    if not localHrp then return "N/A" end
+    
+    local distance = (localHrp.Position - position).Magnitude
+    return math.floor(distance)
 end
 
-function PlayerAPI:SetFakeName(v) hideState.Name=v end
-function PlayerAPI:SetFakeLevel(v) hideState.Level=v end
-function PlayerAPI:SetHideMode(v) hideState.Mode=v end
-function PlayerAPI:AddHideTarget(p) hideState.Targets[p]=true end
-function PlayerAPI:RemoveHideTarget(p) hideState.Targets[p]=nil end
-function PlayerAPI:ClearHideTargets() hideState.Targets={} end
+-- Fungsi update ESP dengan jarak
+function PlayerAPI:_UpdateESP(plr)
+    if not espEnabled then
+        if espCache[plr] then
+            espCache[plr].gui:Destroy()
+            espCache[plr] = nil
+        end
+        return
+    end
 
-function PlayerAPI:SetHideUsernames(v)
-    hideState.Enabled=v
-    pcall(function()
-        StarterGui:SetCoreGuiEnabled(Enum.CoreGuiType.PlayerList,not v)
-    end)
+    local char = plr.Character
+    local hrp = char and char:FindFirstChild("HumanoidRootPart")
+    if not hrp then 
+        if espCache[plr] then
+            espCache[plr].gui:Destroy()
+            espCache[plr] = nil
+        end
+        return 
+    end
 
-    if v then
-        hideConn = RunService.RenderStepped:Connect(function()
-            for _,plr in ipairs(Players:GetPlayers()) do
-                if not isTarget(plr) then continue end
-                local c=plr.Character
-                local h=c and c:FindFirstChildOfClass("Humanoid")
-                if h then h.DisplayName=hideState.Name end
-            end
-        end)
+    -- Jika ESP sudah ada, update jarak saja
+    if espCache[plr] then
+        local distance = CalculateDistance(hrp.Position)
+        espCache[plr].label.Text = string.format("%s [%dm]", 
+            plr.DisplayName or plr.Name, 
+            distance
+        )
+        return
+    end
+
+    -- Buat ESP baru
+    local gui = Instance.new("BillboardGui")
+    gui.Name = "NYXHUB_ESP"
+    gui.Adornee = hrp
+    gui.Size = UDim2.new(0, 200, 0, 50) -- Ukuran diperbesar untuk menampilkan jarak
+    gui.StudsOffset = Vector3.new(0, 3, 0)
+    gui.AlwaysOnTop = true
+    gui.MaxDistance = 500 -- Hanya tampilkan dalam jarak 500 studs
+    gui.Parent = hrp
+
+    local label = Instance.new("TextLabel", gui)
+    label.Size = UDim2.fromScale(1, 1)
+    label.BackgroundTransparency = 1
+    label.TextScaled = true
+    label.Font = Enum.Font.GothamBold
+    label.TextColor3 = Color3.fromRGB(255, 230, 230)
+    label.TextStrokeTransparency = 0.5
+    label.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
+
+    -- Warna berdasarkan jarak (opsional)
+    local distance = CalculateDistance(hrp.Position)
+    if distance <= 50 then
+        label.TextColor3 = Color3.fromRGB(255, 50, 50) -- Merah untuk jarak dekat
+    elseif distance <= 100 then
+        label.TextColor3 = Color3.fromRGB(255, 150, 50) -- Oranye untuk jarak sedang
     else
-        if hideConn then hideConn:Disconnect() hideConn=nil end
-        for _,plr in ipairs(Players:GetPlayers()) do
-            local h=plr.Character and plr.Character:FindFirstChildOfClass("Humanoid")
-            if h then h.DisplayName=plr.DisplayName end
+        label.TextColor3 = Color3.fromRGB(50, 200, 255) -- Biru untuk jarak jauh
+    end
+
+    label.Text = string.format("%s [%dm]", 
+        plr.DisplayName or plr.Name, 
+        distance
+    )
+
+    -- Simpan data ESP dengan reference ke karakter
+    espCache[plr] = {
+        gui = gui,
+        label = label,
+        connection = nil
+    }
+
+    -- Update jarak secara real-time
+    espCache[plr].connection = RunService.Heartbeat:Connect(function()
+        if not espEnabled or not espCache[plr] then
+            espCache[plr].connection:Disconnect()
+            return
+        end
+
+        if not plr or not plr.Character or not plr.Character:FindFirstChild("HumanoidRootPart") then
+            espCache[plr].gui:Destroy()
+            espCache[plr].connection:Disconnect()
+            espCache[plr] = nil
+            return
+        end
+
+        local hrp = plr.Character.HumanoidRootPart
+        local distance = CalculateDistance(hrp.Position)
+        
+        -- Update warna berdasarkan jarak
+        if distance <= 50 then
+            espCache[plr].label.TextColor3 = Color3.fromRGB(255, 50, 50)
+        elseif distance <= 100 then
+            espCache[plr].label.TextColor3 = Color3.fromRGB(255, 150, 50)
+        else
+            espCache[plr].label.TextColor3 = Color3.fromRGB(50, 200, 255)
+        end
+
+        espCache[plr].label.Text = string.format("%s [%dm]", 
+            plr.DisplayName or plr.Name, 
+            distance
+        )
+    end)
+end
+
+-- Fungsi toggle ESP
+function PlayerAPI:SetESP(enabled)
+    espEnabled = enabled
+
+    if not enabled then
+        -- Matikan semua ESP
+        for _, data in pairs(espCache) do
+            if data.connection then
+                data.connection:Disconnect()
+            end
+            data.gui:Destroy()
+        end
+        espCache = {}
+        return
+    end
+
+    -- Aktifkan ESP untuk semua pemain
+    for _, plr in ipairs(Players:GetPlayers()) do
+        if plr ~= LocalPlayer then
+            PlayerAPI:_UpdateESP(plr)
         end
     end
 end
 
--- =========================================================
--- PLAYER ESP (DISTANCE)
--- =========================================================
-local espEnabled=false
-local espCache={}
-local espConn
-
-local function clearESP(p)
-    if espCache[p] then espCache[p]:Destroy() espCache[p]=nil end
-end
-
-local function createESP(p)
-    if p==LocalPlayer or espCache[p] then return end
-    local hrp=p.Character and p.Character:FindFirstChild("HumanoidRootPart")
-    if not hrp then return end
-
-    local gui=Instance.new("BillboardGui",hrp)
-    gui.Size=UDim2.new(0,140,0,40)
-    gui.StudsOffset=Vector3.new(0,2.6,0)
-    gui.AlwaysOnTop=true
-
-    local name=Instance.new("TextLabel",gui)
-    name.Size=UDim2.new(1,0,0.6,0)
-    name.BackgroundTransparency=1
-    name.TextScaled=true
-    name.Text= p.DisplayName or p.Name
-
-    local dist=Instance.new("TextLabel",gui)
-    dist.Position=UDim2.new(0,0,0.6,0)
-    dist.Size=UDim2.new(1,0,0.4,0)
-    dist.BackgroundTransparency=1
-    dist.TextScaled=true
-
-    espCache[p]={gui=gui,hrp=hrp,dist=dist}
-end
-
-function PlayerAPI:SetESP(v)
-    espEnabled=v
-    for p in pairs(espCache) do clearESP(p) end
-    if not v then if espConn then espConn:Disconnect() end return end
-
-    for _,p in ipairs(Players:GetPlayers()) do createESP(p) end
-    espConn=RunService.RenderStepped:Connect(function()
-        local lhrp=LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
-        if not lhrp then return end
-        for p,d in pairs(espCache) do
-            if d.hrp and d.hrp.Parent then
-                d.dist.Text=string.format("%.1f m",(lhrp.Position-d.hrp.Position).Magnitude*STUD_TO_M)
-            else clearESP(p) end
-        end
+-- Event handler untuk pemain baru
+Players.PlayerAdded:Connect(function(plr)
+    if plr == LocalPlayer then return end
+    
+    plr.CharacterAdded:Connect(function()
+        wait(0.5) -- Tunggu sedikit untuk memastikan karakter lengkap
+        PlayerAPI:_UpdateESP(plr)
     end)
-end
+end)
 
--- =========================================================
--- RESET
--- =========================================================
+-- Event handler untuk pemain yang keluar
+Players.PlayerRemoving:Connect(function(plr)
+    if espCache[plr] then
+        if espCache[plr].connection then
+            espCache[plr].connection:Disconnect()
+        end
+        espCache[plr].gui:Destroy()
+        espCache[plr] = nil
+    end
+end)
+
+-- Update ESP saat karakter local berganti
+LocalPlayer.CharacterAdded:Connect(function()
+    wait(0.5)
+    if espEnabled then
+        for plr, _ in pairs(espCache) do
+            PlayerAPI:_UpdateESP(plr)
+        end
+    end
+end)
+
+-- =========================
+-- RESET CHARACTER
+-- =========================
 function PlayerAPI:ResetCharacterInPlace()
-    local pos=getHRP().Position
-    getHum().Health=0
+    local char = LocalPlayer.Character
+    local hrp = char and char:FindFirstChild("HumanoidRootPart")
+    local hum = char and char:FindFirstChildOfClass("Humanoid")
+    
+    if not hrp or not hum then 
+        warn("Karakter atau Humanoid tidak ditemukan")
+        return 
+    end
+
+    -- Simpan posisi dan orientasi kamera saat ini
+    local camera = workspace.CurrentCamera
+    local lastPos = hrp.Position
+    local lastCFrame = hrp.CFrame
+    
+    -- Dapatkan look vector dari kamera (arah pandang player)
+    local cameraLookVector
+    if camera then
+        cameraLookVector = camera.CFrame.LookVector
+    else
+        -- Fallback: gunakan look vector dari HRP jika kamera tidak tersedia
+        cameraLookVector = lastCFrame.LookVector
+    end
+
+    -- Reset karakter
+    hum.Health = 0
+
+    -- Tunggu karakter baru muncul
+    LocalPlayer.CharacterAdded:Wait()
+    
+    -- Tunggu sedikit untuk memastikan karakter terload dengan benar
+    task.wait(0.5)
+
+    -- Dapatkan HRP baru
+    local newChar = LocalPlayer.Character
+    local newHRP = newChar:WaitForChild("HumanoidRootPart", 5)
+    local newHum = newChar:WaitForChild("Humanoid", 5)
+    
+    if newHRP and newHum then
+        -- Pastikan humanoid tidak mati
+        newHum.Health = newHum.MaxHealth
+        
+        -- Buat CFrame baru dengan posisi dan orientasi yang dipertahankan
+        -- Atur posisi sedikit lebih tinggi untuk menghindari terjebak di tanah
+        local targetPosition = lastPos + Vector3.new(0, 3, 0)
+        
+        -- Buat CFrame yang menghadap ke arah yang sama dengan sebelumnya
+        -- Gunakan LookVector dari kamera sebagai forward vector
+        local targetCFrame = CFrame.new(targetPosition, targetPosition + cameraLookVector)
+        
+        -- Terapkan CFrame ke HRP baru
+        newHRP.CFrame = targetCFrame
+        
+        -- Tunggu frame berikutnya untuk memastikan posisi diterapkan
+        task.wait(0.1)
+        
+        -- Reset velocity untuk mencegah glitch
+        newHRP.Velocity = Vector3.new(0, 0, 0)
+        newHRP.AssemblyLinearVelocity = Vector3.new(0, 0, 0)
+        newHRP.AssemblyAngularVelocity = Vector3.new(0, 0, 0)
+        
+        -- Optional: Beri feedback visual/suara
+        warn(string.format("Karakter di-reset di posisi: %s dengan orientasi: %s", 
+            tostring(targetPosition), 
+            tostring(cameraLookVector)))
+    else
+        warn("Gagal mendapatkan HRP atau Humanoid baru")
+    end
+end
+
+-- Versi alternatif dengan opsi untuk mempertahankan orientasi karakter (bukan kamera)
+function PlayerAPI:ResetCharacterInPlaceWithCharOrientation()
+    local char = LocalPlayer.Character
+    local hrp = char and char:FindFirstChild("HumanoidRootPart")
+    local hum = char and char:FindFirstChildOfClass("Humanoid")
+    
+    if not hrp or not hum then 
+        warn("Karakter atau Humanoid tidak ditemukan")
+        return 
+    end
+
+    -- Simpan posisi dan orientasi karakter
+    local lastPos = hrp.Position
+    local lastCFrame = hrp.CFrame
+    
+    -- Ekstrak rotasi dari CFrame (menghadap karakter)
+    local _, rotY, _ = lastCFrame:ToEulerAnglesYXZ()
+    
+    -- Reset karakter
+    hum.Health = 0
+
+    -- Tunggu karakter baru
     LocalPlayer.CharacterAdded:Wait()
     task.wait(0.5)
-    getHRP().CFrame=CFrame.new(pos+Vector3.new(0,3,0))
+
+    local newChar = LocalPlayer.Character
+    local newHRP = newChar:WaitForChild("HumanoidRootPart", 5)
+    local newHum = newChar:WaitForChild("Humanoid", 5)
+    
+    if newHRP and newHum then
+        newHum.Health = newHum.MaxHealth
+        
+        -- Buat posisi baru
+        local targetPosition = lastPos + Vector3.new(0, 3, 0)
+        
+        -- Buat CFrame dengan orientasi yang sama seperti sebelumnya
+        -- Menggunakan rotasi Y (yaw) untuk menghadap ke arah yang sama
+        local targetCFrame = CFrame.new(targetPosition) * CFrame.Angles(0, rotY, 0)
+        
+        newHRP.CFrame = targetCFrame
+        
+        task.wait(0.1)
+        newHRP.Velocity = Vector3.new(0, 0, 0)
+        newHRP.AssemblyLinearVelocity = Vector3.new(0, 0, 0)
+        newHRP.AssemblyAngularVelocity = Vector3.new(0, 0, 0)
+        
+        warn("Karakter di-reset dengan orientasi karakter sebelumnya")
+    end
 end
 
-function PlayerAPI:ResetAll()
-    self:SetFreeze(false)
-    self:SetInfiniteJump(false)
-    self:SetNoClip(false)
-    self:SetFly(false)
-    self:SetWalkOnWater(false)
-    self:SetESP(false)
-    self:SetHideUsernames(false)
-    self:ResetMovement()
+-- Versi dengan input parameter untuk custom orientation
+function PlayerAPI:ResetCharacterCustom(customLookVector)
+    local char = LocalPlayer.Character
+    local hrp = char and char:FindFirstChild("HumanoidRootPart")
+    local hum = char and char:FindFirstChildOfClass("Humanoid")
+    
+    if not hrp or not hum then return end
+
+    local lastPos = hrp.Position
+    local targetLookVector = customLookVector or (workspace.CurrentCamera and workspace.CurrentCamera.CFrame.LookVector) or hrp.CFrame.LookVector
+    
+    hum.Health = 0
+    LocalPlayer.CharacterAdded:Wait()
+    task.wait(0.5)
+
+    local newHRP = LocalPlayer.Character:WaitForChild("HumanoidRootPart", 5)
+    if newHRP then
+        local targetPosition = lastPos + Vector3.new(0, 3, 0)
+        local targetCFrame = CFrame.new(targetPosition, targetPosition + targetLookVector)
+        newHRP.CFrame = targetCFrame
+    end
+end
+
+-- =========================================================
+-- CLEANUP (ANTI LEAK)
+-- =========================================================
+function PlayerAPI:Shutdown()
+    for _, conn in pairs(connections) do
+        pcall(function()
+            if typeof(conn) == "RBXScriptConnection" then
+                conn:Disconnect()
+            elseif typeof(conn) == "Instance" then
+                conn:Destroy()
+            end
+        end)
+    end
+    connections = {}
 end
 
 return PlayerAPI
