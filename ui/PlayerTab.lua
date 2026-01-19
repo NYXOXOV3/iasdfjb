@@ -98,9 +98,7 @@ return function(Window, PlayerAPI, WindUI)
 
     other:Input({
         Title = "Custom Fake Name",
-        Desc = "Nama samaran yang akan muncul di atas kepala player.",
         Value = ".gg/NYXHUB",
-        Placeholder = "Hidden User",
         Icon = "user-x",
         Callback = function(text)
             PlayerAPI:SetFakeName(text)
@@ -109,20 +107,82 @@ return function(Window, PlayerAPI, WindUI)
 
     other:Input({
         Title = "Custom Fake Level",
-        Desc = "Level samaran (misal: 'Lvl. 100' atau 'Max').",
         Value = "Lvl. 969",
-        Placeholder = "Lvl. 999",
         Icon = "bar-chart-2",
         Callback = function(text)
             PlayerAPI:SetFakeLevel(text)
         end
     })
 
+    -- =========================
+    -- MODE SELECTOR
+    -- =========================
+    other:Dropdown({
+        Title = "Hide Mode",
+        Values = {
+            { Name = "Self Only", Value = "SELF" },
+            { Name = "Selected Players", Value = "SELECTED" },
+            { Name = "All Players", Value = "ALL" },
+        },
+        Default = "SELF",
+        Callback = function(mode)
+            PlayerAPI:SetHideMode(mode)
+        end
+    })
+
+    -- =========================
+    -- PLAYER SELECTOR
+    -- =========================
+    local selector = tab:Section({
+        Title = "Select Players (Selected Mode)",
+        TextSize = 16,
+    })
+
+    local function refreshPlayerList()
+        selector:Clear()
+        for _, plr in ipairs(Players:GetPlayers()) do
+            if plr ~= LocalPlayer then
+                selector:Toggle({
+                    Title = plr.Name,
+                    Callback = function(state)
+                        if state then
+                            PlayerAPI:AddHideTarget(plr)
+                        else
+                            PlayerAPI:RemoveHideTarget(plr)
+                        end
+                    end
+                })
+            end
+        end
+    end
+
+    refreshPlayerList()
+
+    Players.PlayerAdded:Connect(refreshPlayerList)
+    Players.PlayerRemoving:Connect(refreshPlayerList)
+
+    -- =========================
+    -- MAIN TOGGLE
+    -- =========================
     other:Toggle({
-        Title = "Hide All Usernames (Streamer Mode)",
+        Title = "Hide Usernames (Streamer Mode)",
         Value = false,
         Callback = function(state)
             PlayerAPI:SetHideUsernames(state)
+            WindUI:Notify({
+                Title = state and "Streamer Mode ON" or "Streamer Mode OFF",
+                Duration = 2,
+                Icon = state and "eye-off" or "eye",
+            })
+        end
+    })
+
+    other:Button({
+        Title = "Clear Selected Players",
+        Icon = "trash",
+        Callback = function()
+            PlayerAPI:ClearHideTargets()
+            refreshPlayerList()
         end
     })
 
