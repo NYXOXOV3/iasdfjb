@@ -51,14 +51,14 @@ return function(Window, PlayerAPI, WindUI)
             })
         end
     })
-
+    
     --movement:Toggle({
     --    Title = "Freeze Player",
     --    Callback = function(state)
     --        PlayerAPI:SetFreeze(state)
     --    end
     --})
-
+    movement:Divider()
     -- =========================
     -- MODES
     -- =========================
@@ -91,7 +91,7 @@ return function(Window, PlayerAPI, WindUI)
             PlayerAPI:SetInfiniteZoom(state)
         end
     })
-
+    ability:Divider()
     -- =========================
     -- VISUAL
     -- =========================
@@ -125,7 +125,7 @@ return function(Window, PlayerAPI, WindUI)
             PlayerAPI:ResetAll()
         end
     })
-
+    other:Divider()
     -- =========================
     -- EXTERNAL
     -- =========================
@@ -133,7 +133,6 @@ return function(Window, PlayerAPI, WindUI)
     local external = tab:Section({ Title = "External" })
     external:Button({
         Title = "FLY GUI",
-        Icon = "bird",
         Callback = function()
             loadstring(game:HttpGet("https://raw.githubusercontent.com/XNEOFF/FlyGuiV3/main/FlyGuiV3.txt"))()
         end
