@@ -105,7 +105,6 @@ end
 
 APIs.Info          = loadAPI("INFO", "methode/info/InfoAPI.lua")
 APIs.Player        = loadAPI("PLAYER", "methode/player/PlayerAPI.lua")
---APIs.Settings      = loadAPI("SETTINGS", "methode/player/SettingsAPI.lua)
 --APIs.Fishing       = loadAPI("FISHING", "methode/fishing/FishingAPI.lua")
 --APIs.Automatic     = loadAPI("AUTOMATIC", "methode/automatic/AutomaticAPI.lua")
 --APIs.Teleport      = loadAPI("TELEPORT", "methode/teleport/TeleportAPI.lua")
@@ -146,8 +145,6 @@ local Window = WindUI:CreateWindow({
     ScrollBarEnabled = true,
 })
 
-Window:SetToggleKey(Enum.KeyCode.G)
-
 Window:Tag({
     Title = "v1.0.3",
     Color = Color3.fromRGB(0, 255, 0),
@@ -177,7 +174,6 @@ end
 
 loadTab("ui/InfoTab.lua", APIs.Info)
 loadTab("ui/PlayerTab.lua", APIs.Player)
---loadTab("ui/SettingsTab.lua", APIs.Settings)
 --loadTab("ui/FishingTab.lua", APIs.Fishing)
 --loadTab("ui/AutomaticTab.lua", APIs.Automatic)
 --loadTab("ui/TeleportTab.lua", APIs.Teleport)
