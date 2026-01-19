@@ -466,6 +466,138 @@ Players.PlayerAdded:Connect(function(plr)
 end)
 
 -- =========================================================
+-- DISABLE 3D RENDERING (ULTRA LOW MODE)
+-- =========================================================
+
+local Lighting = game:GetService("Lighting")
+local Workspace = game:GetService("Workspace")
+local Players = game:GetService("Players")
+local LocalPlayer = Players.LocalPlayer
+
+local UltraData = {
+    Parts = {},
+    Effects = {},
+    Clothes = {},
+    Lighting = {},
+    Enabled = false
+}
+
+function PlayerAPI:SetDisable3DRendering(state)
+    if UltraData.Enabled == state then return end
+    UltraData.Enabled = state
+
+    if state then
+        --------------------
+        -- SAVE LIGHTING
+        --------------------
+        if not UltraData.Lighting.Saved then
+            UltraData.Lighting = {
+                Ambient = Lighting.Ambient,
+                OutdoorAmbient = Lighting.OutdoorAmbient,
+                Brightness = Lighting.Brightness,
+                FogEnd = Lighting.FogEnd,
+                Saved = true
+            }
+        end
+
+        Lighting.Ambient = Color3.fromRGB(180,180,180)
+        Lighting.OutdoorAmbient = Color3.fromRGB(180,180,180)
+        Lighting.Brightness = 1
+        Lighting.FogEnd = 1e10
+
+        --------------------
+        -- FLATTEN WORLD
+        --------------------
+        for _, obj in ipairs(Workspace:GetDescendants()) do
+            if obj:IsA("BasePart") then
+                if not UltraData.Parts[obj] then
+                    UltraData.Parts[obj] = {
+                        Color = obj.Color,
+                        Material = obj.Material
+                    }
+                end
+                obj.Color = Color3.fromRGB(200,200,200)
+                obj.Material = Enum.Material.SmoothPlastic
+            elseif obj:IsA("Decal") or obj:IsA("Texture") then
+                if not UltraData.Parts[obj] then
+                    UltraData.Parts[obj] = {Texture = obj.Texture}
+                end
+                obj.Texture = ""
+            end
+        end
+
+        --------------------
+        -- DISABLE EFFECTS
+        --------------------
+        for _, obj in ipairs(Workspace:GetDescendants()) do
+            if obj:IsA("ParticleEmitter") or obj:IsA("Trail") or obj:IsA("Beam") then
+                if not UltraData.Effects[obj] then
+                    UltraData.Effects[obj] = {Enabled = obj.Enabled}
+                end
+                obj.Enabled = false
+            end
+        end
+
+        --------------------
+        -- STRIP CLOTHES (LOCAL)
+        --------------------
+        local char = LocalPlayer.Character
+        if char then
+            UltraData.Clothes[char] = {}
+            for _, item in ipairs(char:GetChildren()) do
+                if item:IsA("Shirt") or item:IsA("Pants") or item:IsA("Accessory") then
+                    table.insert(UltraData.Clothes[char], item)
+                    item.Parent = nil
+                end
+            end
+        end
+
+    else
+        --------------------
+        -- RESTORE LIGHTING
+        --------------------
+        local L = UltraData.Lighting
+        if L.Saved then
+            Lighting.Ambient = L.Ambient
+            Lighting.OutdoorAmbient = L.OutdoorAmbient
+            Lighting.Brightness = L.Brightness
+            Lighting.FogEnd = L.FogEnd
+        end
+
+        --------------------
+        -- RESTORE WORLD
+        --------------------
+        for obj, data in pairs(UltraData.Parts) do
+            if obj and obj.Parent then
+                if data.Color then obj.Color = data.Color end
+                if data.Material then obj.Material = data.Material end
+                if data.Texture then obj.Texture = data.Texture end
+            end
+        end
+
+        --------------------
+        -- RESTORE EFFECTS
+        --------------------
+        for obj, eff in pairs(UltraData.Effects) do
+            if obj and obj.Parent then
+                obj.Enabled = eff.Enabled
+            end
+        end
+
+        --------------------
+        -- RESTORE CLOTHES
+        --------------------
+        local char = LocalPlayer.Character
+        if char and UltraData.Clothes[char] then
+            for _, item in ipairs(UltraData.Clothes[char]) do
+                item.Parent = char
+            end
+        end
+    end
+end
+
+
+-- =========================================================
 -- CLEANUP (ANTI LEAK)
 -- =========================================================
 function PlayerAPI:Shutdown()
