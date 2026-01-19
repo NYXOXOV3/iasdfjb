@@ -137,26 +137,46 @@ return function(Window, FishingAPI, WindUI, FishingAreas, AreaNames)
         end
     })
 
-    -- Stats Display
-    local statsLabel = blatantv2:Label({
-        Title = "Current Stats",
-        Content = "Inactive"
+    -- Stats Display using Paragraph
+    local statsParagraph = blatantv2:Paragraph({
+        Title = "📊 Current Stats",
+        Content = "Status: Inactive\nMode: None\nSpeed: 0 fish/sec\nCycle: 0ms"
     })
 
-    -- Update stats
+    -- Update stats automatically
     task.spawn(function()
         while task.wait(1) do
             local stats = FishingAPI:GetBlatantV2Stats()
             if stats.Active then
-                statsLabel:Set({
-                    Content = string.format("%s | %s | %s", 
-                        stats.Mode, stats.Speed, stats.CycleTime)
+                statsParagraph:Set({
+                    Content = string.format(
+                        "Status: 🟢 ACTIVE\nMode: %s\nSpeed: %s\nCycle: %s",
+                        stats.Mode, stats.Speed, stats.CycleTime
+                    )
                 })
             else
-                statsLabel:Set({Content = "Inactive"})
+                statsParagraph:Set({
+                    Content = "Status: 🔴 INACTIVE\nMode: None\nSpeed: 0 fish/sec\nCycle: 0ms"
+                })
             end
         end
-    end)
+    })
+
+    -- Emergency Stop Button
+    blatantv2:Button({
+        Title = "🛑 EMERGENCY STOP",
+        Callback = function()
+            FishingAPI:SetBlatantV2(false)
+            if WindUI then
+                WindUI:Notify({
+                    Title = "Blatant V2 Stopped",
+                    Content = "Brutal mode deactivated",
+                    Duration = 3,
+                    Icon = "alert-octagon"
+                })
+            end
+        end
+    })
 
     farm:Divider()
 
@@ -218,20 +238,37 @@ return function(Window, FishingAPI, WindUI, FishingAreas, AreaNames)
     farm:Divider()
     
     -- ================= CLEANUP SECTION =================
-    local cleanup = farm:Section({ Title = "Cleanup" })
+    local cleanup = farm:Section({ Title = "System" })
     
     cleanup:Button({
-        Title = "Stop All & Cleanup",
+        Title = "🛑 STOP ALL FISHING",
         Callback = function()
             FishingAPI:Cleanup()
             if WindUI then
                 WindUI:Notify({
-                    Title = "Cleanup Complete",
-                    Content = "All fishing modes stopped",
+                    Title = "All Fishing Stopped",
+                    Content = "Legit, Normal, Blatant, and V2 modes disabled",
                     Duration = 3,
                     Icon = "check"
                 })
             end
         end
     })
+
+    -- Performance Info
+    cleanup:Paragraph({
+        Title = "ℹ️ Performance Info",
+        Content = "Legit: Safe but slow\nNormal: Medium speed\nBlatant: Fast, detectable\nV2: Extreme, high risk"
+    })
+
+    -- Console logging for debugging
+    task.spawn(function()
+        while task.wait(5) do
+            local stats = FishingAPI:GetBlatantV2Stats()
+            if stats.Active then
+                print(string.format("[FishingAPI] BlatantV2 Active | %s | %s", 
+                    stats.Mode, stats.Speed))
+            end
+        end
+    end)
 end
