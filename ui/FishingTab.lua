@@ -3,7 +3,7 @@
 -- =========================================================
 return function(Window, FishingAPI, WindUI)
 
-    if not PlayerAPI then
+    if not FishingAPI then
         warn("[SETTING TAB] FishingAPI missing, skipped")
         return
     end
