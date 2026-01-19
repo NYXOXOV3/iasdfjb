@@ -1,27 +1,24 @@
 -- =========================================================
--- PLAYER API
--- NYXHUB - Fish It
+-- PLAYER API - NYXHUB (FULL FINAL)
 -- =========================================================
 
 local PlayerAPI = {}
 
--- =========================================================
 -- SERVICES
--- =========================================================
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
 local StarterGui = game:GetService("StarterGui")
 
 local LocalPlayer = Players.LocalPlayer
+local STUD_TO_M = 0.28
 
 -- =========================================================
 -- INTERNAL STATE
 -- =========================================================
 local state = {
-    WalkSpeed = nil,
-    JumpPower = nil,
-
+    WalkSpeed = 16,
+    JumpPower = 50,
     Frozen = false,
     InfiniteJump = false,
     NoClip = false,
@@ -34,442 +31,295 @@ local connections = {}
 -- =========================================================
 -- HELPERS
 -- =========================================================
-local function getCharacter()
+local function getChar()
     return LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
 end
 
-local function getHumanoid()
-    local char = getCharacter()
-    return char:FindFirstChildOfClass("Humanoid")
+local function getHum()
+    return getChar():FindFirstChildOfClass("Humanoid")
 end
 
 local function getHRP()
-    local char = getCharacter()
-    return char:WaitForChild("HumanoidRootPart")
+    return getChar():WaitForChild("HumanoidRootPart")
 end
 
 -- =========================================================
 -- MOVEMENT
 -- =========================================================
-function PlayerAPI:SetWalkSpeed(value)
-    local hum = getHumanoid()
-    if hum then
-        hum.WalkSpeed = value
-        state.WalkSpeed = value
-    end
+function PlayerAPI:SetWalkSpeed(v)
+    local h = getHum()
+    if h then h.WalkSpeed = v end
+    state.WalkSpeed = v
 end
 
-function PlayerAPI:SetJumpPower(value)
-    local hum = getHumanoid()
-    if hum then
-        hum.JumpPower = value
-        state.JumpPower = value
-    end
+function PlayerAPI:SetJumpPower(v)
+    local h = getHum()
+    if h then h.JumpPower = v end
+    state.JumpPower = v
 end
 
 function PlayerAPI:ResetMovement()
-    local hum = getHumanoid()
-    if hum then
-        hum.WalkSpeed = 16
-        hum.JumpPower = 50
-        state.WalkSpeed = 16
-        state.JumpPower = 50
-    end
+    self:SetWalkSpeed(16)
+    self:SetJumpPower(50)
 end
 
 -- =========================================================
 -- FREEZE
 -- =========================================================
-function PlayerAPI:SetFreeze(enabled)
+function PlayerAPI:SetFreeze(v)
     local hrp = getHRP()
-    if not hrp then return end
-
-    hrp.Anchored = enabled
+    hrp.Anchored = v
     hrp.AssemblyLinearVelocity = Vector3.zero
     hrp.Velocity = Vector3.zero
-
-    state.Frozen = enabled
+    state.Frozen = v
 end
 
 -- =========================================================
 -- INFINITE JUMP
 -- =========================================================
-function PlayerAPI:SetInfiniteJump(enabled)
-    state.InfiniteJump = enabled
-
-    if enabled then
+function PlayerAPI:SetInfiniteJump(v)
+    state.InfiniteJump = v
+    if v then
         connections.InfJump = UserInputService.JumpRequest:Connect(function()
-            local hum = getHumanoid()
-            if hum and hum.Health > 0 then
-                hum:ChangeState(Enum.HumanoidStateType.Jumping)
+            local h = getHum()
+            if h and h.Health > 0 then
+                h:ChangeState(Enum.HumanoidStateType.Jumping)
             end
         end)
-    else
-        if connections.InfJump then
-            connections.InfJump:Disconnect()
-            connections.InfJump = nil
-        end
+    elseif connections.InfJump then
+        connections.InfJump:Disconnect()
+        connections.InfJump = nil
     end
 end
 
 -- =========================================================
 -- NO CLIP
 -- =========================================================
-function PlayerAPI:SetNoClip(enabled)
-    state.NoClip = enabled
-
-    if enabled then
+function PlayerAPI:SetNoClip(v)
+    state.NoClip = v
+    if v then
         connections.NoClip = RunService.Stepped:Connect(function()
-            local char = LocalPlayer.Character
-            if not char then return end
-
-            for _, part in ipairs(char:GetDescendants()) do
-                if part:IsA("BasePart") then
-                    part.CanCollide = false
-                end
+            local c = LocalPlayer.Character
+            if not c then return end
+            for _, p in ipairs(c:GetDescendants()) do
+                if p:IsA("BasePart") then p.CanCollide = false end
             end
         end)
-    else
-        if connections.NoClip then
-            connections.NoClip:Disconnect()
-            connections.NoClip = nil
-        end
-
-        local char = LocalPlayer.Character
-        if char then
-            for _, part in ipairs(char:GetDescendants()) do
-                if part:IsA("BasePart") then
-                    part.CanCollide = true
-                end
-            end
-        end
+    elseif connections.NoClip then
+        connections.NoClip:Disconnect()
+        connections.NoClip = nil
     end
 end
 
 -- =========================================================
--- FLY (SIMPLE & STABLE)
+-- FLY
 -- =========================================================
-function PlayerAPI:SetFly(enabled, speed)
+function PlayerAPI:SetFly(v, speed)
     speed = speed or 60
-    state.Fly = enabled
+    state.Fly = v
 
-    local hrp = getHRP()
-    local hum = getHumanoid()
+    local hrp, hum = getHRP(), getHum()
     if not hrp or not hum then return end
 
-    if enabled then
-        local bg = Instance.new("BodyGyro")
+    if v then
+        local bg = Instance.new("BodyGyro", hrp)
         bg.P = 9e4
-        bg.MaxTorque = Vector3.new(9e9, 9e9, 9e9)
-        bg.CFrame = hrp.CFrame
-        bg.Parent = hrp
+        bg.MaxTorque = Vector3.new(9e9,9e9,9e9)
 
-        local bv = Instance.new("BodyVelocity")
-        bv.MaxForce = Vector3.new(9e9, 9e9, 9e9)
-        bv.Parent = hrp
+        local bv = Instance.new("BodyVelocity", hrp)
+        bv.MaxForce = Vector3.new(9e9,9e9,9e9)
 
         connections.Fly = RunService.RenderStepped:Connect(function()
-            local cam = workspace.CurrentCamera
-            bg.CFrame = cam.CFrame
-
+            bg.CFrame = workspace.CurrentCamera.CFrame
             local move = hum.MoveDirection
             if UserInputService:IsKeyDown(Enum.KeyCode.Space) then
-                move += Vector3.new(0, 1, 0)
+                move += Vector3.new(0,1,0)
             elseif UserInputService:IsKeyDown(Enum.KeyCode.LeftControl) then
-                move -= Vector3.new(0, 1, 0)
+                move -= Vector3.new(0,1,0)
             end
-
             bv.Velocity = move.Magnitude > 0 and move.Unit * speed or Vector3.zero
         end)
 
         connections.FlyBG = bg
         connections.FlyBV = bv
     else
-        if connections.Fly then connections.Fly:Disconnect() end
-        if connections.FlyBG then connections.FlyBG:Destroy() end
-        if connections.FlyBV then connections.FlyBV:Destroy() end
-
-        connections.Fly = nil
-        connections.FlyBG = nil
-        connections.FlyBV = nil
+        for _, k in ipairs({"Fly","FlyBG","FlyBV"}) do
+            if connections[k] then
+                if typeof(connections[k])=="RBXScriptConnection" then
+                    connections[k]:Disconnect()
+                else
+                    connections[k]:Destroy()
+                end
+                connections[k]=nil
+            end
+        end
     end
 end
 
--- =========================
+-- =========================================================
 -- WALK ON WATER
--- =========================
-local waterConn
-local waterPlatform
+-- =========================================================
+local waterConn, waterPart
 
-function PlayerAPI:SetWalkOnWater(enabled)
-    state.WalkOnWater = enabled
+function PlayerAPI:SetWalkOnWater(v)
+    state.WalkOnWater = v
 
-    if enabled then
-        if not waterPlatform then
-            waterPlatform = Instance.new("Part")
-            waterPlatform.Anchored = true
-            waterPlatform.CanCollide = true
-            waterPlatform.Transparency = 1
-            waterPlatform.Size = Vector3.new(15, 1, 15)
-            waterPlatform.Parent = workspace
-        end
+    if v then
+        waterPart = Instance.new("Part")
+        waterPart.Anchored = true
+        waterPart.CanCollide = true
+        waterPart.Transparency = 1
+        waterPart.Size = Vector3.new(18,1,18)
+        waterPart.Parent = workspace
 
         waterConn = RunService.RenderStepped:Connect(function()
-            local char = LocalPlayer.Character
-            local hrp = char and char:FindFirstChild("HumanoidRootPart")
+            local hrp = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
             if not hrp then return end
 
-            local rayParams = RaycastParams.new()
-            rayParams.FilterDescendantsInstances = { workspace.Terrain }
-            rayParams.FilterType = Enum.RaycastFilterType.Include
-            rayParams.IgnoreWater = false
+            local params = RaycastParams.new()
+            params.FilterDescendantsInstances = {workspace.Terrain}
+            params.FilterType = Enum.RaycastFilterType.Include
+            params.IgnoreWater = false
 
-            local result = workspace:Raycast(
-                hrp.Position + Vector3.new(0, 5, 0),
-                Vector3.new(0, -500, 0),
-                rayParams
-            )
-
-            if result and result.Material == Enum.Material.Water then
-                waterPlatform.Position =
-                    Vector3.new(hrp.Position.X, result.Position.Y, hrp.Position.Z)
-
-                if hrp.Position.Y < result.Position.Y + 2 then
-                    hrp.CFrame =
-                        CFrame.new(hrp.Position.X, result.Position.Y + 3.2, hrp.Position.Z)
+            local res = workspace:Raycast(hrp.Position+Vector3.new(0,5,0),Vector3.new(0,-500,0),params)
+            if res and res.Material == Enum.Material.Water then
+                waterPart.Position = Vector3.new(hrp.Position.X,res.Position.Y,hrp.Position.Z)
+                if hrp.Position.Y < res.Position.Y+2 then
+                    hrp.CFrame = CFrame.new(hrp.Position.X,res.Position.Y+3.2,hrp.Position.Z)
                 end
             else
-                waterPlatform.Position = Vector3.new(0, -500, 0)
+                waterPart.Position = Vector3.new(0,-500,0)
             end
         end)
     else
-        if waterConn then waterConn:Disconnect() waterConn = nil end
-        if waterPlatform then waterPlatform:Destroy() waterPlatform = nil end
+        if waterConn then waterConn:Disconnect() waterConn=nil end
+        if waterPart then waterPart:Destroy() waterPart=nil end
     end
 end
 
 -- =========================================================
--- STREAMER MODE / HIDE USERNAME
+-- STREAMER MODE (SELF / SELECTED / ALL)
 -- =========================================================
-
 local hideState = {
-    Enabled = false,
-    Mode = "SELF", -- SELF | SELECTED | ALL
-    Targets = {}, -- [Player] = true
-    CustomName = ".gg/NYXHUB",
-    CustomLevel = "Lvl. 969",
+    Enabled=false,
+    Mode="SELF",
+    Targets={},
+    Name=".gg/NYXHUB",
+    Level="Lvl. 969"
 }
 
 local hideConn
 
--- =========================
--- HELPERS
--- =========================
 local function isTarget(plr)
-    if hideState.Mode == "ALL" then
-        return true
-    end
-    if hideState.Mode == "SELF" then
-        return plr == LocalPlayer
-    end
-    if hideState.Mode == "SELECTED" then
-        return hideState.Targets[plr] == true
-    end
-    return false
+    if hideState.Mode=="ALL" then return true end
+    if hideState.Mode=="SELF" then return plr==LocalPlayer end
+    if hideState.Mode=="SELECTED" then return hideState.Targets[plr] end
 end
 
--- =========================
--- PUBLIC CONFIG
--- =========================
-function PlayerAPI:SetFakeName(name)
-    hideState.CustomName = tostring(name)
-end
+function PlayerAPI:SetFakeName(v) hideState.Name=v end
+function PlayerAPI:SetFakeLevel(v) hideState.Level=v end
+function PlayerAPI:SetHideMode(v) hideState.Mode=v end
+function PlayerAPI:AddHideTarget(p) hideState.Targets[p]=true end
+function PlayerAPI:RemoveHideTarget(p) hideState.Targets[p]=nil end
+function PlayerAPI:ClearHideTargets() hideState.Targets={} end
 
-function PlayerAPI:SetFakeLevel(level)
-    hideState.CustomLevel = tostring(level)
-end
-
-function PlayerAPI:SetHideMode(mode)
-    if mode == "SELF" or mode == "SELECTED" or mode == "ALL" then
-        hideState.Mode = mode
-    end
-end
-
-function PlayerAPI:AddHideTarget(player)
-    if typeof(player) == "Instance" and player:IsA("Player") then
-        hideState.Targets[player] = true
-    end
-end
-
-function PlayerAPI:RemoveHideTarget(player)
-    hideState.Targets[player] = nil
-end
-
-function PlayerAPI:ClearHideTargets()
-    hideState.Targets = {}
-end
-
--- =========================
--- CORE TOGGLE
--- =========================
-function PlayerAPI:SetHideUsernames(enabled)
-    hideState.Enabled = enabled
-
-    -- Toggle PlayerList
+function PlayerAPI:SetHideUsernames(v)
+    hideState.Enabled=v
     pcall(function()
-        StarterGui:SetCoreGuiEnabled(
-            Enum.CoreGuiType.PlayerList,
-            not enabled
-        )
+        StarterGui:SetCoreGuiEnabled(Enum.CoreGuiType.PlayerList,not v)
     end)
 
-    if enabled then
-        if hideConn then hideConn:Disconnect() end
-
+    if v then
         hideConn = RunService.RenderStepped:Connect(function()
-            for _, plr in ipairs(Players:GetPlayers()) do
+            for _,plr in ipairs(Players:GetPlayers()) do
                 if not isTarget(plr) then continue end
-
-                local char = plr.Character
-                if not char then continue end
-
-                -- A. DisplayName
-                local hum = char:FindFirstChildOfClass("Humanoid")
-                if hum and hum.DisplayName ~= hideState.CustomName then
-                    hum.DisplayName = hideState.CustomName
-                end
-
-                -- B. BillboardGui
-                for _, gui in ipairs(char:GetDescendants()) do
-                    if gui:IsA("BillboardGui") then
-                        for _, lbl in ipairs(gui:GetDescendants()) do
-                            if lbl:IsA("TextLabel") or lbl:IsA("TextButton") then
-                                if not lbl.Visible then continue end
-                                local txt = lbl.Text
-
-                                if txt:find(plr.Name) or txt:find(plr.DisplayName) then
-                                    lbl.Text = hideState.CustomName
-                                elseif txt:match("%d+") or txt:lower():find("lvl") or txt:lower():find("level") then
-                                    if #txt < 15 then
-                                        lbl.Text = hideState.CustomLevel
-                                    end
-                                end
-                            end
-                        end
-                    end
-                end
+                local c=plr.Character
+                local h=c and c:FindFirstChildOfClass("Humanoid")
+                if h then h.DisplayName=hideState.Name end
             end
         end)
     else
-        if hideConn then
-            hideConn:Disconnect()
-            hideConn = nil
-        end
-
-        -- Restore DisplayName
-        for _, plr in ipairs(Players:GetPlayers()) do
-            local char = plr.Character
-            if not char then continue end
-            local hum = char:FindFirstChildOfClass("Humanoid")
-            if hum then
-                hum.DisplayName = plr.DisplayName
-            end
-        end
-    end
-end
--- =========================
--- PLAYER ESP
--- =========================
-local espEnabled = false
-local espCache = {}
-
-function PlayerAPI:SetESP(enabled)
-    espEnabled = enabled
-
-    for _, plr in ipairs(Players:GetPlayers()) do
-        if plr ~= LocalPlayer then
-            PlayerAPI:_UpdateESP(plr)
+        if hideConn then hideConn:Disconnect() hideConn=nil end
+        for _,plr in ipairs(Players:GetPlayers()) do
+            local h=plr.Character and plr.Character:FindFirstChildOfClass("Humanoid")
+            if h then h.DisplayName=plr.DisplayName end
         end
     end
 end
 
-function PlayerAPI:_UpdateESP(plr)
-    if not espEnabled then
-        if espCache[plr] then
-            espCache[plr]:Destroy()
-            espCache[plr] = nil
-        end
-        return
-    end
+-- =========================================================
+-- PLAYER ESP (DISTANCE)
+-- =========================================================
+local espEnabled=false
+local espCache={}
+local espConn
 
-    local char = plr.Character
-    local hrp = char and char:FindFirstChild("HumanoidRootPart")
+local function clearESP(p)
+    if espCache[p] then espCache[p]:Destroy() espCache[p]=nil end
+end
+
+local function createESP(p)
+    if p==LocalPlayer or espCache[p] then return end
+    local hrp=p.Character and p.Character:FindFirstChild("HumanoidRootPart")
     if not hrp then return end
 
-    if espCache[plr] then return end
+    local gui=Instance.new("BillboardGui",hrp)
+    gui.Size=UDim2.new(0,140,0,40)
+    gui.StudsOffset=Vector3.new(0,2.6,0)
+    gui.AlwaysOnTop=true
 
-    local gui = Instance.new("BillboardGui")
-    gui.Name = "NYXHUB_ESP"
-    gui.Adornee = hrp
-    gui.Size = UDim2.new(0, 140, 0, 40)
-    gui.StudsOffset = Vector3.new(0, 2.5, 0)
-    gui.AlwaysOnTop = true
-    gui.Parent = hrp
+    local name=Instance.new("TextLabel",gui)
+    name.Size=UDim2.new(1,0,0.6,0)
+    name.BackgroundTransparency=1
+    name.TextScaled=true
+    name.Text= p.DisplayName or p.Name
 
-    local label = Instance.new("TextLabel", gui)
-    label.Size = UDim2.fromScale(1, 1)
-    label.BackgroundTransparency = 1
-    label.TextScaled = true
-    label.Font = Enum.Font.GothamBold
-    label.TextColor3 = Color3.fromRGB(255, 230, 230)
-    label.Text = plr.DisplayName or plr.Name
+    local dist=Instance.new("TextLabel",gui)
+    dist.Position=UDim2.new(0,0,0.6,0)
+    dist.Size=UDim2.new(1,0,0.4,0)
+    dist.BackgroundTransparency=1
+    dist.TextScaled=true
 
-    espCache[plr] = gui
+    espCache[p]={gui=gui,hrp=hrp,dist=dist}
 end
-Players.PlayerAdded:Connect(function(plr)
-    plr.CharacterAdded:Connect(function()
-        wait(1)
-        PlayerAPI:_UpdateESP(plr)
+
+function PlayerAPI:SetESP(v)
+    espEnabled=v
+    for p in pairs(espCache) do clearESP(p) end
+    if not v then if espConn then espConn:Disconnect() end return end
+
+    for _,p in ipairs(Players:GetPlayers()) do createESP(p) end
+    espConn=RunService.RenderStepped:Connect(function()
+        local lhrp=LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+        if not lhrp then return end
+        for p,d in pairs(espCache) do
+            if d.hrp and d.hrp.Parent then
+                d.dist.Text=string.format("%.1f m",(lhrp.Position-d.hrp.Position).Magnitude*STUD_TO_M)
+            else clearESP(p) end
+        end
     end)
-end)
+end
 
--- =========================
--- RESET CHARACTER
--- =========================
+-- =========================================================
+-- RESET
+-- =========================================================
 function PlayerAPI:ResetCharacterInPlace()
-    local char = LocalPlayer.Character
-    local hrp = char and char:FindFirstChild("HumanoidRootPart")
-    local hum = char and char:FindFirstChildOfClass("Humanoid")
-    if not hrp or not hum then return end
-
-    local lastPos = hrp.Position
-    hum.Health = 0
-
+    local pos=getHRP().Position
+    getHum().Health=0
     LocalPlayer.CharacterAdded:Wait()
     task.wait(0.5)
-
-    local newHRP =
-        LocalPlayer.Character:WaitForChild("HumanoidRootPart", 5)
-    if newHRP then
-        newHRP.CFrame = CFrame.new(lastPos + Vector3.new(0, 3, 0))
-    end
+    getHRP().CFrame=CFrame.new(pos+Vector3.new(0,3,0))
 end
 
-
--- =========================================================
--- CLEANUP (ANTI LEAK)
--- =========================================================
-function PlayerAPI:Shutdown()
-    for _, conn in pairs(connections) do
-        pcall(function()
-            if typeof(conn) == "RBXScriptConnection" then
-                conn:Disconnect()
-            elseif typeof(conn) == "Instance" then
-                conn:Destroy()
-            end
-        end)
-    end
-    connections = {}
+function PlayerAPI:ResetAll()
+    self:SetFreeze(false)
+    self:SetInfiniteJump(false)
+    self:SetNoClip(false)
+    self:SetFly(false)
+    self:SetWalkOnWater(false)
+    self:SetESP(false)
+    self:SetHideUsernames(false)
+    self:ResetMovement()
 end
 
 return PlayerAPI
