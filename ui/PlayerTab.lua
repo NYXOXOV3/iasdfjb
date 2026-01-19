@@ -84,4 +84,44 @@ return function(Window, PlayerAPI, WindUI)
             PlayerAPI:SetFly(state, 60)
         end
     })
+    ability:Toggle({
+        Title = "Walk On Water",
+        Callback = function(state)
+            PlayerAPI:SetWalkOnWater(state)
+        end
+    })
+
+    -- =========================
+    -- OTHERS
+    -- =========================
+    local other = tab:Section({ Title = "Others" })
+
+    other:Toggle({
+        Title = "Esp Player",
+        Callback = function(state)
+            PlayerAPI:SetESP(state)
+        end
+    })
+
+    other:Button({
+        Title = "Reset Player Inplace",
+        Icon = "refresh-cw",
+        Callback = function()
+            PlayerAPI:ResetCharacterInPlace()
+            WindUI:Notify({
+                Title = "Reset",
+                Content = "Player reset inplace",
+                Duration = 2,
+                Icon = "check",
+            })
+        end
+    })
+
+    other:Button({
+        Title = "Reset All Player Settings",
+        Icon = "rotate-ccw",
+        Callback = function()
+            PlayerAPI:ResetAll()
+        end
+    })
 end
