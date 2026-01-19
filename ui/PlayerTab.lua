@@ -1,217 +1,57 @@
 -- =========================================================
--- PLAYER TAB (UI ONLY)
+-- PLAYER TAB UI (FULL FINAL)
 -- =========================================================
 
 return function(Window, PlayerAPI, WindUI)
 
-    if not PlayerAPI then
-        warn("[PLAYER TAB] PlayerAPI missing, skipped")
-        return
-    end
+    local Players = game:GetService("Players")
+    local LocalPlayer = Players.LocalPlayer
 
-    local tab = Window:Tab({
-        Title = "Player",
-        Icon = "user",
-        Locked = false,
+    local tab = Window:Tab({ Title="Player", Icon="user" })
+
+    local move = tab:Section({ Title="Movement" })
+    move:Slider({ Title="WalkSpeed", Value={Min=16,Max=200,Default=16},
+        Callback=function(v) PlayerAPI:SetWalkSpeed(v) end })
+    move:Slider({ Title="JumpPower", Value={Min=50,Max=200,Default=50},
+        Callback=function(v) PlayerAPI:SetJumpPower(v) end })
+    move:Button({ Title="Reset Movement", Callback=function() PlayerAPI:ResetMovement() end })
+    move:Toggle({ Title="Freeze Player", Callback=function(v) PlayerAPI:SetFreeze(v) end })
+
+    local ab = tab:Section({ Title="Abilities" })
+    ab:Toggle({ Title="Infinite Jump", Callback=function(v) PlayerAPI:SetInfiniteJump(v) end })
+    ab:Toggle({ Title="No Clip", Callback=function(v) PlayerAPI:SetNoClip(v) end })
+    ab:Toggle({ Title="Fly Mode", Callback=function(v) PlayerAPI:SetFly(v,60) end })
+    ab:Toggle({ Title="Walk On Water", Callback=function(v) PlayerAPI:SetWalkOnWater(v) end })
+
+    local stream = tab:Section({ Title="Streamer Mode" })
+    stream:Input({ Title="Fake Name", Value=".gg/NYXHUB", Callback=function(v) PlayerAPI:SetFakeName(v) end })
+    stream:Input({ Title="Fake Level", Value="Lvl. 969", Callback=function(v) PlayerAPI:SetFakeLevel(v) end })
+    stream:Dropdown({
+        Title="Mode",
+        Values={{Name="Self",Value="SELF"},{Name="Selected",Value="SELECTED"},{Name="All",Value="ALL"}},
+        Default="SELF",
+        Callback=function(v) PlayerAPI:SetHideMode(v) end
     })
+    stream:Toggle({ Title="Hide Usernames", Callback=function(v) PlayerAPI:SetHideUsernames(v) end })
 
-    -- =========================
-    -- MOVEMENT
-    -- =========================
-    local movement = tab:Section({ Title = "Movement" })
-
-    movement:Slider({
-        Title = "WalkSpeed",
-        Step = 1,
-        Value = { Min = 16, Max = 200, Default = 16 },
-        Callback = function(v)
-            PlayerAPI:SetWalkSpeed(v)
-        end
-    })
-
-    movement:Slider({
-        Title = "JumpPower",
-        Step = 1,
-        Value = { Min = 50, Max = 200, Default = 50 },
-        Callback = function(v)
-            PlayerAPI:SetJumpPower(v)
-        end
-    })
-
-    movement:Button({
-        Title = "Reset Movement",
-        Icon = "rotate-ccw",
-        Callback = function()
-            PlayerAPI:ResetMovement()
-            WindUI:Notify({
-                Title = "Reset",
-                Content = "Movement reset to default",
-                Duration = 2,
-                Icon = "check",
-            })
-        end
-    })
-
-    movement:Toggle({
-        Title = "Freeze Player",
-        Callback = function(state)
-            PlayerAPI:SetFreeze(state)
-        end
-    })
-
-    -- =========================
-    -- ABILITIES
-    -- =========================
-    local ability = tab:Section({ Title = "Abilities" })
-
-    ability:Toggle({
-        Title = "Infinite Jump",
-        Callback = function(state)
-            PlayerAPI:SetInfiniteJump(state)
-        end
-    })
-
-    ability:Toggle({
-        Title = "No Clip",
-        Callback = function(state)
-            PlayerAPI:SetNoClip(state)
-        end
-    })
-
-    ability:Toggle({
-        Title = "Fly Mode",
-        Callback = function(state)
-            PlayerAPI:SetFly(state, 60)
-        end
-    })
-    ability:Toggle({
-        Title = "Walk On Water",
-        Callback = function(state)
-            PlayerAPI:SetWalkOnWater(state)
-        end
-    })
-
-    -- =========================
-    -- OTHERS
-    -- =========================
-    local other = tab:Section({ Title = "Others" })
-
-    other:Input({
-        Title = "Custom Fake Name",
-        Value = ".gg/NYXHUB",
-        Icon = "user-x",
-        Callback = function(text)
-            PlayerAPI:SetFakeName(text)
-        end
-    })
-
-    other:Input({
-        Title = "Custom Fake Level",
-        Value = "Lvl. 969",
-        Icon = "bar-chart-2",
-        Callback = function(text)
-            PlayerAPI:SetFakeLevel(text)
-        end
-    })
-
-    -- =========================
-    -- MODE SELECTOR
-    -- =========================
-    other:Dropdown({
-        Title = "Hide Mode",
-        Values = {
-            { Name = "Self Only", Value = "SELF" },
-            { Name = "Selected Players", Value = "SELECTED" },
-            { Name = "All Players", Value = "ALL" },
-        },
-        Default = "SELF",
-        Callback = function(mode)
-            PlayerAPI:SetHideMode(mode)
-        end
-    })
-
-    -- =========================
-    -- PLAYER SELECTOR
-    -- =========================
-    local selector = tab:Section({
-        Title = "Select Players (Selected Mode)",
-        TextSize = 16,
-    })
-
-    local function refreshPlayerList()
-        selector:Clear()
-        for _, plr in ipairs(Players:GetPlayers()) do
-            if plr ~= LocalPlayer then
-                selector:Toggle({
-                    Title = plr.Name,
-                    Callback = function(state)
-                        if state then
-                            PlayerAPI:AddHideTarget(plr)
-                        else
-                            PlayerAPI:RemoveHideTarget(plr)
-                        end
-                    end
-                })
+    local sel = tab:Section({ Title="Select Players" })
+    local function refresh()
+        sel:Clear()
+        for _,p in ipairs(Players:GetPlayers()) do
+            if p~=LocalPlayer then
+                sel:Toggle({ Title=p.Name, Callback=function(v)
+                    if v then PlayerAPI:AddHideTarget(p) else PlayerAPI:RemoveHideTarget(p) end
+                end })
             end
         end
     end
+    refresh()
+    Players.PlayerAdded:Connect(refresh)
+    Players.PlayerRemoving:Connect(refresh)
 
-    refreshPlayerList()
+    local other = tab:Section({ Title="Other" })
+    other:Toggle({ Title="Player ESP", Callback=function(v) PlayerAPI:SetESP(v) end })
+    other:Button({ Title="Reset Player Inplace", Callback=function() PlayerAPI:ResetCharacterInPlace() end })
+    other:Button({ Title="Reset All", Callback=function() PlayerAPI:ResetAll() end })
 
-    Players.PlayerAdded:Connect(refreshPlayerList)
-    Players.PlayerRemoving:Connect(refreshPlayerList)
-
-    -- =========================
-    -- MAIN TOGGLE
-    -- =========================
-    other:Toggle({
-        Title = "Hide Usernames (Streamer Mode)",
-        Value = false,
-        Callback = function(state)
-            PlayerAPI:SetHideUsernames(state)
-            WindUI:Notify({
-                Title = state and "Streamer Mode ON" or "Streamer Mode OFF",
-                Duration = 2,
-                Icon = state and "eye-off" or "eye",
-            })
-        end
-    })
-
-    other:Button({
-        Title = "Clear Selected Players",
-        Icon = "trash",
-        Callback = function()
-            PlayerAPI:ClearHideTargets()
-            refreshPlayerList()
-        end
-    })
-
-    other:Toggle({
-        Title = "Esp Player",
-        Callback = function(state)
-            PlayerAPI:SetESP(state)
-        end
-    })
-
-    other:Button({
-        Title = "Reset Player Inplace",
-        Icon = "refresh-cw",
-        Callback = function()
-            PlayerAPI:ResetCharacterInPlace()
-            WindUI:Notify({
-                Title = "Reset",
-                Content = "Player reset inplace",
-                Duration = 2,
-                Icon = "check",
-            })
-        end
-    })
-
-    other:Button({
-        Title = "Reset All Player Settings",
-        Icon = "rotate-ccw",
-        Callback = function()
-            PlayerAPI:ResetAll()
-        end
-    })
 end
