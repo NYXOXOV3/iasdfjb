@@ -16,6 +16,33 @@ return function(Window, PlayerAPI, WindUI)
     })
 
     -- =========================
+    -- STREAM
+    -- =========================
+    local stream = tab:Section({ Title = "Stream" })
+
+    stream:Toggle({
+        Title = "Hide Username",
+        Desc = "Rejoin to disable",
+        Default = false,
+        Callback = function(state)
+            PlayerAPI:SetHideUsername(state)
+        end
+    })
+
+    stream:Button({
+        Title = "Reset Player Inplace",
+        Icon = "refresh-cw",
+        Callback = function()
+            PlayerAPI:ResetCharacterInPlace()
+            WindUI:Notify({
+                Title = "Reset",
+                Content = "Player reset inplace",
+                Duration = 2,
+                Icon = "check",
+            })
+        end
+    })
+    -- =========================
     -- MOVEMENT
     -- =========================
     local movement = tab:Section({ Title = "Movement" })
@@ -101,20 +128,6 @@ return function(Window, PlayerAPI, WindUI)
         Title = "Esp Player",
         Callback = function(state)
             PlayerAPI:SetESP(state)
-        end
-    })
-
-    other:Button({
-        Title = "Reset Player Inplace",
-        Icon = "refresh-cw",
-        Callback = function()
-            PlayerAPI:ResetCharacterInPlace()
-            WindUI:Notify({
-                Title = "Reset",
-                Content = "Player reset inplace",
-                Duration = 2,
-                Icon = "check",
-            })
         end
     })
 
