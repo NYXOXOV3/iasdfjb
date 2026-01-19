@@ -30,10 +30,10 @@ return function(Window, PlayerAPI, WindUI)
     })
 
     stream:Toggle({
-        Title = "Anti Staff",
+        Title = "Anti Staff (Auto Rejoin)",
         Default = false,
         Callback = function(state)
-            PlayerAPI:SetAntiStaff(state)
+            PlayerAPI:SetAntiStaffAutoRejoin(state, "SameServer") -- atau "LowServer"
         end
     })
 
