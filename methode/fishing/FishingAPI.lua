@@ -1,5 +1,5 @@
 -- =========================================================
--- FISHING API (UNIFIED VERSION) - FIXED
+-- FISHING API (UNIFIED VERSION) - WITH CLEAN BLATANT V2
 -- =========================================================
 
 local FishingAPI = {}
@@ -53,6 +53,18 @@ local originalFishingStopped = nil
 local originalClick = nil
 local originalCharge = nil
 
+-- ================= BLATANT V2 CLEAN =================
+local BlatantV2 = {
+    Active = false,
+    Settings = {
+        ChargeDelay = 0.007,
+        CompleteDelay = 0.001,
+        CancelDelay = 0.001,
+        EquipDelay = 0.02
+    },
+    Thread = nil
+}
+
 -- ================= HELPERS =================
 local function GetHRP()
     local char = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
@@ -80,6 +92,7 @@ local RF_Start = GetRemote(RPath, "RF/RequestFishingMinigameStarted")
 local RE_Complete = GetRemote(RPath, "RE/FishingCompleted")
 local RF_Cancel = GetRemote(RPath, "RF/CancelFishingInputs")
 local RF_Update = GetRemote(RPath, "RF/UpdateAutoFishingState")
+local RE_MinigameChanged = GetRemote(RPath, "RE/FishingMinigameChanged")
 
 -- ================= INITIALIZE CONTROLLERS =================
 function FishingAPI:Initialize()
@@ -348,6 +361,138 @@ function FishingAPI:SetCompleteDelay(v)
     end
 end
 
+-- ================= BLATANT V2 CLEAN IMPLEMENTATION =================
+local function safeFire(func)
+    task.spawn(function()
+        pcall(func)
+    end)
+end
+
+local function ultraSpamLoop()
+    local equipThread = task.spawn(function()
+        while BlatantV2.Active do
+            safeFire(function()
+                RE_Equip:FireServer(1)
+            end)
+            task.wait(BlatantV2.Settings.EquipDelay)
+        end
+    end)
+    
+    while BlatantV2.Active do
+        local startTime = tick()
+        
+        safeFire(function()
+            RF_Charge:InvokeServer({[1] = startTime})
+        end)
+        
+        task.wait(BlatantV2.Settings.ChargeDelay)
+        
+        local releaseTime = tick()
+        safeFire(function()
+            RF_Start:InvokeServer(1, 0, releaseTime)
+        end)
+        
+        task.wait(BlatantV2.Settings.CompleteDelay)
+        
+        safeFire(function()
+            RE_Complete:FireServer()
+        end)
+        
+        task.wait(BlatantV2.Settings.CancelDelay)
+        safeFire(function()
+            RF_Cancel:InvokeServer()
+        end)
+    end
+end
+
+-- Setup event listener
+task.spawn(function()
+    RE_MinigameChanged.OnClientEvent:Connect(function(state)
+        if not BlatantV2.Active then return end
+        
+        task.spawn(function()
+            task.wait(BlatantV2.Settings.CompleteDelay)
+            
+            safeFire(function()
+                RE_Complete:FireServer()
+            end)
+            
+            task.wait(BlatantV2.Settings.CancelDelay)
+            safeFire(function()
+                RF_Cancel:InvokeServer()
+            end)
+        end)
+    end)
+end)
+
+function FishingAPI:SetBlatantV2(state)
+    if state == BlatantV2.Active then return end
+    
+    if state then
+        -- Disable other modes first
+        FishingAPI:SetLegit(false)
+        FishingAPI:SetNormal(false)
+        FishingAPI:SetActive(false)
+        
+        BlatantV2.Active = true
+        BlatantV2.Thread = task.spawn(ultraSpamLoop)
+    else
+        BlatantV2.Active = false
+        
+        if BlatantV2.Thread then
+            task.cancel(BlatantV2.Thread)
+            BlatantV2.Thread = nil
+        end
+        
+        -- Cleanup
+        safeFire(function()
+            RF_Update:InvokeServer(true)
+        end)
+        
+        task.wait(0.2)
+        
+        safeFire(function()
+            RF_Cancel:InvokeServer()
+        end)
+    end
+end
+
+function FishingAPI:SetBlatantV2Setting(setting, value)
+    local num = tonumber(value)
+    if not num then return end
+    
+    if setting == "CompleteDelay" then
+        BlatantV2.Settings.CompleteDelay = math.max(0.001, num)
+    elseif setting == "CancelDelay" then
+        BlatantV2.Settings.CancelDelay = math.max(0.001, num)
+    elseif setting == "ChargeDelay" then
+        BlatantV2.Settings.ChargeDelay = math.max(0.001, num)
+    elseif setting == "EquipDelay" then
+        BlatantV2.Settings.EquipDelay = math.max(0.01, num)
+    end
+end
+
+function FishingAPI:GetBlatantV2Stats()
+    local cycleTime = BlatantV2.Settings.ChargeDelay + BlatantV2.Settings.CompleteDelay + BlatantV2.Settings.CancelDelay
+    local speedPerSec = 0
+    if cycleTime > 0 then
+        speedPerSec = 1 / cycleTime
+    end
+    
+    return {
+        Active = BlatantV2.Active,
+        Mode = "Ultra",
+        Speed = string.format("%.0f fish/sec", speedPerSec),
+        CycleTime = string.format("%.0fms", cycleTime * 1000),
+        Settings = {
+            ChargeDelay = BlatantV2.Settings.ChargeDelay,
+            CompleteDelay = BlatantV2.Settings.CompleteDelay,
+            CancelDelay = BlatantV2.Settings.CancelDelay,
+            EquipDelay = BlatantV2.Settings.EquipDelay
+        }
+    }
+end
+
 -- ================= AREA MANAGEMENT =================
 function FishingAPI:SetSelectedArea(v)
     selectedArea = v
@@ -415,124 +560,6 @@ function FishingAPI:TeleportToArea(FishingAreas)
     end
     
     return TeleportToLookAt(area.Pos, area.Look)
-end
-
--- ================= BLATANT V2 SIMPLIFIED =================
-local BlatantV2 = {
-    Active = false,
-    Mode = "Extreme",
-    CompleteDelay = 0.08,
-    CancelDelay = 0.05,
-    EquipDelay = 0.02,
-    BatchSize = 3
-}
-
-local V2MainThread = nil
-local V2EquipThread = nil
-
-local function ExtremeFishingLoop()
-    -- Equip spam thread
-    V2EquipThread = task.spawn(function()
-        while BlatantV2.Active do
-            pcall(function() RE_Equip:FireServer(1) end)
-            task.wait(BlatantV2.EquipDelay)
-        end
-    end)
-    
-    -- Main fishing loop
-    while BlatantV2.Active do
-        -- Cancel existing state
-        pcall(function() RF_Cancel:InvokeServer() end)
-        
-        -- Charge with extreme value
-        pcall(function() RF_Charge:InvokeServer(math.huge) end)
-        
-        -- Start fishing
-        pcall(function() 
-            RF_Start:InvokeServer(-139.6379699707, 0.99647927980797) 
-        end)
-        
-        -- Instant complete
-        task.wait(BlatantV2.CompleteDelay)
-        
-        if BlatantV2.Active then
-            pcall(function() RE_Complete:FireServer() end)
-        end
-        
-        -- Wait for next cycle
-        task.wait(BlatantV2.CancelDelay)
-    end
-end
-
-function FishingAPI:SetBlatantV2(state)
-    if state == BlatantV2.Active then return end
-    
-    BlatantV2.Active = state
-    
-    if state then
-        -- Disable other modes
-        FishingAPI:SetLegit(false)
-        FishingAPI:SetNormal(false)
-        FishingAPI:SetActive(false)
-        
-        -- Start V2 mode
-        V2MainThread = task.spawn(ExtremeFishingLoop)
-    else
-        -- Stop all threads
-        if V2MainThread then task.cancel(V2MainThread) end
-        if V2EquipThread then task.cancel(V2EquipThread) end
-        
-        V2MainThread = nil
-        V2EquipThread = nil
-        
-        -- Send cleanup
-        pcall(function() RF_Cancel:InvokeServer() end)
-    end
-end
-
-function FishingAPI:SetBlatantV2Mode(mode)
-    if mode == "Extreme" or mode == "Ultra" or mode == "GodMode" then
-        BlatantV2.Mode = mode
-        
-        -- Adjust settings
-        if mode == "Ultra" then
-            BlatantV2.CompleteDelay = 0.05
-            BlatantV2.CancelDelay = 0.03
-        elseif mode == "GodMode" then
-            BlatantV2.CompleteDelay = 0.03
-            BlatantV2.CancelDelay = 0.01
-        end
-    end
-end
-
-function FishingAPI:SetBlatantV2Setting(setting, value)
-    local num = tonumber(value)
-    if not num then return end
-    
-    if setting == "CompleteDelay" then
-        BlatantV2.CompleteDelay = math.max(0.01, num)
-    elseif setting == "CancelDelay" then
-        BlatantV2.CancelDelay = math.max(0.01, num)
-    elseif setting == "EquipDelay" then
-        BlatantV2.EquipDelay = math.max(0.01, num)
-    elseif setting == "BatchSize" then
-        BlatantV2.BatchSize = math.clamp(num, 1, 10)
-    end
-end
-
-function FishingAPI:GetBlatantV2Stats()
-    local cycleTime = BlatantV2.CompleteDelay + BlatantV2.CancelDelay
-    local speedPerSec = 0
-    if cycleTime > 0 then
-        speedPerSec = 1 / cycleTime
-    end
-    
-    return {
-        Active = BlatantV2.Active,
-        Mode = BlatantV2.Mode,
-        Speed = string.format("%.1f fish/sec", speedPerSec),
-        CycleTime = string.format("%.0fms", cycleTime * 1000)
-    }
 end
 
 -- ================= CLEANUP =================
