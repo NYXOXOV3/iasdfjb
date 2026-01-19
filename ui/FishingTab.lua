@@ -1,130 +1,164 @@
 -- =========================================================
--- FISHING TAB (UI ONLY)
+-- FISHING TAB (UI ONLY - USING FISHINGAPI)
 -- =========================================================
-return function(Window, FishingAPI, WindUI)
-
+return function(Window, FishingAPI, WindUI, FishingAreas, AreaNames)
     if not FishingAPI then
-        warn("[SETTING TAB] FishingAPI missing, skipped")
+        warn("[FISHING TAB] FishingAPI missing, skipped")
         return
     end
 
-task.wait(0.5)
+    local farm = Window:Tab({
+        Title = "Fishing",
+        Icon = "fish",
+    })
 
-local farm = Window:Tab({
-    Title = "Fishing",
-    Icon = "fish",
-})
+    -- ================= AUTO FISHING SECTION =================
+    local autofish = farm:Section({ Title = "Auto Fishing" })
 
-local autofish = farm:Section({ Title = "Auto Fishing" })
-
-autofish:Slider({
-    Title = "Legit Click Speed (Delay)",
-    Step = 0.01,
-    Value = { Min = 0.01, Max = 0.5, Default = 0.05 },
-    Callback = function(v)
-        FishingAPI:SetLegitSpeed(v)
-    end
-})
-
-autofish:Toggle({
-    Title = "Auto Fish (Legit)",
-    Callback = function(v)
-        FishingAPI:SetLegit(v)
-    end
-})
-
-autofish:Slider({
-    Title = "Normal Complete Delay",
-    Step = 0.05,
-    Value = { Min = 0.5, Max = 5.0, Default = 1.5 },
-    Callback = function(v)
-        FishingAPI:SetNormalDelay(v)
-    end
-})
-
-autofish:Toggle({
-    Title = "Normal Instant Fish",
-    Callback = function(v)
-        FishingAPI:SetNormal(v)
-    end
-})
-
-local blatant = farm:Section({ Title = "Blatant Mode" })
-
-blatant:Dropdown({
-    Title = "Blatant Mode",
-    Values = { "Old", "New" },
-    Callback = function(mode)
-        FishingAPI:SetMode(mode)
-    end
-})
-
-blatant:Input({
-    Title = "Cancel Delay",
-    Default = "1.75",
-    Callback = function(v)
-        FishingAPI:SetCancelDelay(v)
-    end
-})
-
-blatant:Input({
-    Title = "Complete Delay",
-    Default = "1.33",
-    Callback = function(v)
-        FishingAPI:SetCompleteDelay(v)
-    end
-})
-    
-blatant:Toggle({
-    Title = "Instant Fishing (Blatant)",
-    Callback = function(state)
-        FishingAPI:SetActive(state)
-    end
-})
-farm:Divider()
-
-local areafish = farm:Section({ Title = "Fishing Area" })
-
-areafish:Dropdown({
-    Title = "Choose Area",
-    Values = AreaNames,
-    AllowNone = true,
-    Callback = function(v)
-        FishingAPI:SetSelectedArea(v)
-    end
-})
-
-local freezeToggle
-freezeToggle = areafish:Toggle({
-    Title = "Teleport & Freeze at Area",
-    Callback = function(state)
-        local ok = FishingAPI:SetTeleportFreeze(state, FishingAreas)
-        if not ok and freezeToggle then
-            freezeToggle:Set(false)
+    -- Legit Mode Controls
+    autofish:Slider({
+        Title = "Legit Click Speed (Delay)",
+        Step = 0.01,
+        Value = { Min = 0.01, Max = 0.5, Default = 0.05 },
+        Callback = function(v)
+            FishingAPI:SetLegitSpeed(v)
         end
-    end
-})
+    })
 
-areafish:Button({
-    Title = "Teleport to Choosen Area",
-    Callback = function()
-        FishingAPI:TeleportToArea(FishingAreas)
-    end
-})
+    autofish:Toggle({
+        Title = "Auto Fish (Legit)",
+        Callback = function(v)
+            FishingAPI:SetLegit(v)
+        end
+    })
 
-areafish:Button({
-    Title = "Save Current Position",
-    Callback = function()
-        local pos = FishingAPI:SaveCurrentPosition()
-        FishingAreas["Custom: Saved"] = pos
-    end
-})
+    -- Normal Mode Controls
+    autofish:Slider({
+        Title = "Normal Complete Delay",
+        Step = 0.05,
+        Value = { Min = 0.5, Max = 5.0, Default = 1.5 },
+        Callback = function(v)
+            FishingAPI:SetNormalDelay(v)
+        end
+    })
 
-areafish:Button({
-    Title = "Teleport to SAVED Pos",
-    Callback = function()
-        FishingAPI:SetSelectedArea("Custom: Saved")
-        FishingAPI:TeleportToArea(FishingAreas)
-    end
-})
+    autofish:Toggle({
+        Title = "Normal Instant Fish",
+        Callback = function(v)
+            FishingAPI:SetNormal(v)
+        end
+    })
+
+    farm:Divider()
+
+    -- ================= BLATANT MODE SECTION =================
+    local blatant = farm:Section({ Title = "Blatant Mode" })
+
+    blatant:Dropdown({
+        Title = "Blatant Mode",
+        Values = { "Old", "New" },
+        Callback = function(mode)
+            FishingAPI:SetMode(mode)
+        end
+    })
+
+    blatant:Input({
+        Title = "Cancel Delay",
+        Default = "1.75",
+        Callback = function(v)
+            FishingAPI:SetCancelDelay(v)
+        end
+    })
+
+    blatant:Input({
+        Title = "Complete Delay",
+        Default = "1.33",
+        Callback = function(v)
+            FishingAPI:SetCompleteDelay(v)
+        end
+    })
+    
+    blatant:Toggle({
+        Title = "Instant Fishing (Blatant)",
+        Callback = function(state)
+            FishingAPI:SetActive(state)
+        end
+    })
+
+    farm:Divider()
+
+    -- ================= FISHING AREA SECTION =================
+    local areafish = farm:Section({ Title = "Fishing Area" })
+
+    areafish:Dropdown({
+        Title = "Choose Area",
+        Values = AreaNames,
+        AllowNone = true,
+        Callback = function(v)
+            FishingAPI:SetSelectedArea(v)
+        end
+    })
+
+    local freezeToggle
+    freezeToggle = areafish:Toggle({
+        Title = "Teleport & Freeze at Area",
+        Callback = function(state)
+            local ok = FishingAPI:SetTeleportFreeze(state, FishingAreas)
+            if not ok and freezeToggle then
+                freezeToggle:Set(false)
+            end
+        end
+    })
+
+    areafish:Button({
+        Title = "Teleport to Choosen Area",
+        Callback = function()
+            FishingAPI:TeleportToArea(FishingAreas)
+        end
+    })
+
+    areafish:Button({
+        Title = "Save Current Position",
+        Callback = function()
+            local pos = FishingAPI:SaveCurrentPosition()
+            if pos then
+                FishingAreas["Custom: Saved"] = pos
+                if WindUI then
+                    WindUI:Notify({
+                        Title = "Posisi Disimpan!",
+                        Duration = 3,
+                        Icon = "save",
+                    })
+                end
+            end
+        end
+    })
+
+    areafish:Button({
+        Title = "Teleport to SAVED Pos",
+        Callback = function()
+            FishingAPI:SetSelectedArea("Custom: Saved")
+            FishingAPI:TeleportToArea(FishingAreas)
+        end
+    })
+
+    -- ================= CLEANUP SECTION =================
+    farm:Divider()
+    
+    local cleanup = farm:Section({ Title = "Cleanup" })
+    
+    cleanup:Button({
+        Title = "Stop All & Cleanup",
+        Callback = function()
+            FishingAPI:Cleanup()
+            if WindUI then
+                WindUI:Notify({
+                    Title = "Cleanup Complete",
+                    Content = "All fishing modes stopped and cleanup done",
+                    Duration = 3,
+                    Icon = "check"
+                })
+            end
+        end
+    })
 end
