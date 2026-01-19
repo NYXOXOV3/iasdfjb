@@ -144,6 +144,7 @@ local Window = WindUI:CreateWindow({
     HideSearchBar = true,
     ScrollBarEnabled = true,
     SetToggleKey(Enum.KeyCode.G)
+    SetBackgroundImage("rbxassetid://137263312772667")
 })
 
 Window:Tag({
