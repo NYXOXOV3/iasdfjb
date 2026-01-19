@@ -521,11 +521,17 @@ function FishingAPI:SetBlatantV2Setting(setting, value)
 end
 
 function FishingAPI:GetBlatantV2Stats()
+    local cycleTime = BlatantV2.CompleteDelay + BlatantV2.CancelDelay
+    local speedPerSec = 0
+    if cycleTime > 0 then
+        speedPerSec = 1 / cycleTime
+    end
+    
     return {
         Active = BlatantV2.Active,
         Mode = BlatantV2.Mode,
-        Speed = string.format("%.1f fish/sec", 1 / (BlatantV2.CompleteDelay + BlatantV2.CancelDelay)),
-        CycleTime = string.format("%.0fms", (BlatantV2.CompleteDelay + BlatantV2.CancelDelay) * 1000)
+        Speed = string.format("%.1f fish/sec", speedPerSec),
+        CycleTime = string.format("%.0fms", cycleTime * 1000)
     }
 end
 
