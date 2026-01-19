@@ -9,7 +9,7 @@ return function(Window, FishingAPI, WindUI, FishingAreas, AreaNames)
 
     local farm = Window:Tab({
         Title = "Fishing",
-        Icon = "fish",
+        Icon = "fish"
     })
 
     -- ================= AUTO FISHING SECTION =================
@@ -89,8 +89,7 @@ return function(Window, FishingAPI, WindUI, FishingAreas, AreaNames)
 
     -- ================= BLATANT V2 SECTION =================
     local blatantv2 = farm:Section({ 
-        Title = "🚀 BLATANT V2 (BRUTAL)",
-        TextSize = 16
+        Title = "🚀 BLATANT V2 (BRUTAL)"
     })
 
     -- Mode Selection
@@ -160,7 +159,7 @@ return function(Window, FishingAPI, WindUI, FishingAreas, AreaNames)
                 })
             end
         end
-    })
+    end)
 
     -- Emergency Stop Button
     blatantv2:Button({
@@ -220,7 +219,7 @@ return function(Window, FishingAPI, WindUI, FishingAreas, AreaNames)
                     WindUI:Notify({
                         Title = "Posisi Disimpan!",
                         Duration = 3,
-                        Icon = "save",
+                        Icon = "save"
                     })
                 end
             end
