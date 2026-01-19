@@ -188,5 +188,10 @@ loadTab("ui/PlayerTab.lua", APIs.Player)
 -- =========================
 -- GLOBAL FLAG
 -- =========================
+WindUI:Notify({
+    Title = "Script Loader",
+    Content = "Script Success Loader",
+    Duration = 3, 
+})
 getgenv().NYXHUB_LOADED = true
 dprint("NYXHUB FULLY LOADED (EXECUTOR MODE)")
