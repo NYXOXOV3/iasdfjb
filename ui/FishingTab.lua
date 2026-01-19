@@ -128,3 +128,4 @@ areafish:Button({
         FishingAPI:TeleportToArea(FishingAreas)
     end
 })
+end
