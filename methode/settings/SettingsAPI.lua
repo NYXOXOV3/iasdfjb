@@ -219,19 +219,34 @@ function PlayerAPI:ResetCharacterInPlace()
     local char = LocalPlayer.Character
     local hrp = char and char:FindFirstChild("HumanoidRootPart")
     local hum = char and char:FindFirstChildOfClass("Humanoid")
-    if not hrp or not hum then return end
+    local cam = workspace.CurrentCamera
 
+    if not hrp or not hum or not cam then return end
+
+    -- Simpan posisi & kamera
     local lastPos = hrp.Position
+    local camCFrame = cam.CFrame
+    local camSubject = cam.CameraSubject
+
+    -- Kill character
     hum.Health = 0
 
-    LocalPlayer.CharacterAdded:Wait()
-    task.wait(0.5)
+    -- Tunggu respawn
+    local newChar = LocalPlayer.CharacterAdded:Wait()
+    local newHum = newChar:WaitForChild("Humanoid", 5)
+    local newHRP = newChar:WaitForChild("HumanoidRootPart", 5)
 
-    local newHRP =
-        LocalPlayer.Character:WaitForChild("HumanoidRootPart", 5)
-    if newHRP then
-        newHRP.CFrame = CFrame.new(lastPos + Vector3.new(0, 3, 0))
-    end
+    if not newHum or not newHRP then return end
+
+    -- ⚠️ SET CAMERA DULU (INI KUNCI)
+    cam.CameraType = Enum.CameraType.Custom
+    cam.CameraSubject = newHum
+    cam.CFrame = camCFrame
+
+    task.wait() -- 1 frame biar Roblox settle
+
+    -- Baru pindahin karakter
+    newHRP.CFrame = CFrame.new(lastPos + Vector3.new(0, 3, 0))
 end
 
 -- =========================================================
