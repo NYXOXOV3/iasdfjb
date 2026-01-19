@@ -247,6 +247,95 @@ function PlayerAPI:SetWalkOnWater(enabled)
     end
 end
 
+-- =========================================================
+-- STREAMER MODE / HIDE USERNAME
+-- =========================================================
+
+local hideState = {
+    Enabled = false,
+    CustomName = ".gg/NYXHUB",
+    CustomLevel = "Lvl. 969",
+}
+
+local hideConn
+
+function PlayerAPI:SetFakeName(name)
+    hideState.CustomName = name
+end
+
+function PlayerAPI:SetFakeLevel(level)
+    hideState.CustomLevel = level
+end
+
+function PlayerAPI:SetHideUsernames(enabled)
+    hideState.Enabled = enabled
+
+    -- Toggle PlayerList
+    pcall(function()
+        game:GetService("StarterGui"):SetCoreGuiEnabled(
+            Enum.CoreGuiType.PlayerList,
+            not enabled
+        )
+    end)
+
+    if enabled then
+        if hideConn then hideConn:Disconnect() end
+
+        hideConn = RunService.RenderStepped:Connect(function()
+            for _, plr in ipairs(Players:GetPlayers()) do
+                local char = plr.Character
+                if not char then continue end
+
+                -- A. Humanoid DisplayName
+                local hum = char:FindFirstChildOfClass("Humanoid")
+                if hum and hum.DisplayName ~= hideState.CustomName then
+                    hum.DisplayName = hideState.CustomName
+                end
+
+                -- B. BillboardGui Text
+                for _, gui in ipairs(char:GetDescendants()) do
+                    if gui:IsA("BillboardGui") then
+                        for _, lbl in ipairs(gui:GetDescendants()) do
+                            if lbl:IsA("TextLabel") or lbl:IsA("TextButton") then
+                                if lbl.Visible then
+                                    local txt = lbl.Text
+
+                                    if txt:find(plr.Name) or txt:find(plr.DisplayName) then
+                                        lbl.Text = hideState.CustomName
+
+                                    elseif txt:match("%d+") 
+                                        or txt:lower():find("lvl")
+                                        or txt:lower():find("level") then
+
+                                        if #txt < 15 then
+                                            lbl.Text = hideState.CustomLevel
+                                        end
+                                    end
+                                end
+                            end
+                        end
+                    end
+                end
+            end
+        end)
+    else
+        if hideConn then
+            hideConn:Disconnect()
+            hideConn = nil
+        end
+
+        -- Restore DisplayName
+        for _, plr in ipairs(Players:GetPlayers()) do
+            local char = plr.Character
+            if not char then continue end
+            local hum = char:FindFirstChildOfClass("Humanoid")
+            if hum then
+                hum.DisplayName = plr.DisplayName
+            end
+        end
+    end
+end
+
 -- =========================
 -- PLAYER ESP
 -- =========================
