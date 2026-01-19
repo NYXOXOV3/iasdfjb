@@ -143,6 +143,7 @@ local Window = WindUI:CreateWindow({
     SideBarWidth = 190,
     HideSearchBar = true,
     ScrollBarEnabled = true,
+    SetToggleKey(Enum.KeyCode.G)
 })
 
 Window:Tag({
