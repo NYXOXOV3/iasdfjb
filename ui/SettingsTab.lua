@@ -126,6 +126,14 @@ return function(Window, PlayerAPI, WindUI)
     local other = tab:Section({ Title = "Visual" })
 
     other:Toggle({
+        Title = "Disable 3D Rendering",
+        Default = false,
+        Callback = function(state)
+            PlayerAPI:SetDisable3DRendering(state)
+        end
+    })
+
+    other:Toggle({
         Title = "Esp Player",
         Callback = function(state)
             PlayerAPI:SetESP(state)
