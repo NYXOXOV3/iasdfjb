@@ -96,6 +96,36 @@ return function(Window, PlayerAPI, WindUI)
     -- =========================
     local other = tab:Section({ Title = "Others" })
 
+    other:Input({
+        Title = "Custom Fake Name",
+        Desc = "Nama samaran yang akan muncul di atas kepala player.",
+        Value = ".gg/NYXHUB",
+        Placeholder = "Hidden User",
+        Icon = "user-x",
+        Callback = function(text)
+            PlayerAPI:SetFakeName(text)
+        end
+    })
+
+    other:Input({
+        Title = "Custom Fake Level",
+        Desc = "Level samaran (misal: 'Lvl. 100' atau 'Max').",
+        Value = "Lvl. 969",
+        Placeholder = "Lvl. 999",
+        Icon = "bar-chart-2",
+        Callback = function(text)
+            PlayerAPI:SetFakeLevel(text)
+        end
+    })
+
+    other:Toggle({
+        Title = "Hide All Usernames (Streamer Mode)",
+        Value = false,
+        Callback = function(state)
+            PlayerAPI:SetHideUsernames(state)
+        end
+    })
+
     other:Toggle({
         Title = "Esp Player",
         Callback = function(state)
