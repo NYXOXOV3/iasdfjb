@@ -29,6 +29,14 @@ return function(Window, PlayerAPI, WindUI)
         end
     })
 
+    stream:Toggle({
+        Title = "Anti Staff",
+        Default = false,
+        Callback = function(state)
+            PlayerAPI:SetAntiStaff(state)
+        end
+    })
+
     stream:Button({
         Title = "Reset Player Inplace",
         Icon = "refresh-cw",
