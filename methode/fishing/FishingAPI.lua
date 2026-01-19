@@ -247,6 +247,26 @@ function FishingAPI:SetBlatantCompleteDelay(v)
     if v then Blatant.CompleteDelay = v end
 end
 
+-- Blatant toggle
+function FishingAPI:SetActive(state)
+    self:SetBlatant(state)
+end
+
+-- Blatant mode dropdown
+function FishingAPI:SetMode(mode)
+    self:SetBlatantMode(mode)
+end
+
+-- Blatant cancel delay input
+function FishingAPI:SetCancelDelay(v)
+    self:SetBlatantCancelDelay(v)
+end
+
+-- Blatant complete delay input
+function FishingAPI:SetCompleteDelay(v)
+    self:SetBlatantCompleteDelay(v)
+end
+
 -- ================= AREA / SAVE / FREEZE =================
 function FishingAPI:SetSelectedArea(area)
     selectedArea = area
