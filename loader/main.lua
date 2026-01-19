@@ -144,7 +144,7 @@ local Window = WindUI:CreateWindow({
     HideSearchBar = true,
     ScrollBarEnabled = true,
 })
-
+Window:SetToggleKey(Enum.KeyCode.G)
 Window:Tag({
     Title = "v1.0.3",
     Color = Color3.fromRGB(0, 255, 0),
