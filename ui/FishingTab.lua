@@ -1,5 +1,5 @@
 -- =========================================================
--- FISHING TAB (UI ONLY - USING FISHINGAPI)
+-- FISHING TAB (ALL BLATANT MODES)
 -- =========================================================
 return function(Window, FishingAPI, WindUI, FishingAreas, AreaNames)
     if not FishingAPI then
@@ -41,107 +41,142 @@ return function(Window, FishingAPI, WindUI, FishingAreas, AreaNames)
 
     farm:Divider()
 
-    -- ================= BLATANT MODE SECTION =================
-    local blatant = farm:Section({ Title = "Blatant Mode" })
-
-    blatant:Dropdown({
-        Title = "Blatant Mode",
-        Values = { "Old", "New" },
-        Callback = function(mode) FishingAPI:SetMode(mode) end
-    })
-
-    blatant:Input({
-        Title = "Cancel Delay",
-        Default = "1.75",
-        Callback = function(v) FishingAPI:SetCancelDelay(v) end
-    })
-
-    blatant:Input({
-        Title = "Complete Delay",
-        Default = "1.33",
-        Callback = function(v) FishingAPI:SetCompleteDelay(v) end
-    })
-    
-    blatant:Toggle({
-        Title = "Instant Fishing (Blatant)",
-        Callback = function(state) FishingAPI:SetActive(state) end
-    })
-
-    farm:Divider()
-
     -- ================= BLATANT V2 SECTION =================
-    local blatantv2 = farm:Section({ Title = "🚀 BLATANT V2 (ULTRA)" })
+    local blatantv2 = farm:Section({ Title = "⚡ BLATANT V2 (ULTRA)" })
 
-    -- Settings
     blatantv2:Input({
         Title = "Charge Delay",
         Default = "0.007",
-        Callback = function(v) FishingAPI:SetBlatantV2Setting("ChargeDelay", v) end
+        Callback = function(v) FishingAPI:SetBlatantSetting("BlatantV2", "ChargeDelay", v) end
     })
 
     blatantv2:Input({
         Title = "Complete Delay",
         Default = "0.001",
-        Callback = function(v) FishingAPI:SetBlatantV2Setting("CompleteDelay", v) end
+        Callback = function(v) FishingAPI:SetBlatantSetting("BlatantV2", "CompleteDelay", v) end
     })
 
     blatantv2:Input({
         Title = "Cancel Delay",
         Default = "0.001",
-        Callback = function(v) FishingAPI:SetBlatantV2Setting("CancelDelay", v) end
-    })
-
-    blatantv2:Input({
-        Title = "Equip Delay",
-        Default = "0.02",
-        Callback = function(v) FishingAPI:SetBlatantV2Setting("EquipDelay", v) end
+        Callback = function(v) FishingAPI:SetBlatantSetting("BlatantV2", "CancelDelay", v) end
     })
     
-    -- Toggle
     blatantv2:Toggle({
         Title = "ACTIVATE BLATANT V2",
         Value = false,
-        Callback = function(state) FishingAPI:SetBlatantV2(state) end
-    })
-
-    -- Stats Display
-    local statsParagraph = blatantv2:Paragraph({
-        Title = "📊 Current Stats",
-        Content = "Status: Inactive\nSpeed: 0 fish/sec\nCycle: 0ms"
-    })
-
-    -- Update stats automatically
-    task.spawn(function()
-        while task.wait(1) do
-            local stats = FishingAPI:GetBlatantV2Stats()
-            if stats.Active then
-                statsParagraph:Set({
-                    Content = string.format(
-                        "Status: ACTIVE\nSpeed: %s\nCycle: %s",
-                        stats.Speed, stats.CycleTime
-                    )
-                })
-            else
-                statsParagraph:Set({
-                    Content = "Status: INACTIVE\nSpeed: 0 fish/sec\nCycle: 0ms"
-                })
-            end
+        Callback = function(state)
+            FishingAPI:SetBlatantMode("BlatantV2", state)
         end
-    end)
+    })
 
-    -- Emergency Stop
-    blatantv2:Button({
-        Title = "🛑 EMERGENCY STOP",
-        Callback = function()
-            FishingAPI:SetBlatantV2(false)
-            if WindUI then
-                WindUI:Notify({
-                    Title = "Blatant V2 Stopped",
-                    Content = "Ultra mode deactivated",
-                    Duration = 2,
-                    Icon = "alert-octagon"
-                })
-            end
+    -- ================= BLATANT V3 SECTION =================
+    local blatantv3 = farm:Section({ Title = "🔥 BLATANT V3 (OPTIMIZED)" })
+
+    blatantv3:Input({
+        Title = "Complete Delay",
+        Default = "0.73",
+        Callback = function(v) FishingAPI:SetBlatantSetting("BlatantV3", "CompleteDelay", v) end
+    })
+
+    blatantv3:Input({
+        Title = "Cancel Delay",
+        Default = "0.3",
+        Callback = function(v) FishingAPI:SetBlatantSetting("BlatantV3", "CancelDelay", v) end
+    })
+
+    blatantv3:Input({
+        Title = "ReCast Delay",
+        Default = "0.001",
+        Callback = function(v) FishingAPI:SetBlatantSetting("BlatantV3", "ReCastDelay", v) end
+    })
+    
+    blatantv3:Toggle({
+        Title = "ACTIVATE BLATANT V3",
+        Value = false,
+        Callback = function(state)
+            FishingAPI:SetBlatantMode("BlatantV3", state)
+        end
+    })
+
+    -- ================= BLATANT V4 SECTION =================
+    local blatantv4 = farm:Section({ Title = "🎯 BLATANT V4 (EVENT)" })
+
+    blatantv4:Input({
+        Title = "Fishing Delay",
+        Default = "0.05",
+        Callback = function(v) FishingAPI:SetBlatantSetting("BlatantV4", "FishingDelay", v) end
+    })
+
+    blatantv4:Input({
+        Title = "Cancel Delay",
+        Default = "0.01",
+        Callback = function(v) FishingAPI:SetBlatantSetting("BlatantV4", "CancelDelay", v) end
+    })
+
+    blatantv4:Input({
+        Title = "Timeout Delay",
+        Default = "0.8",
+        Callback = function(v) FishingAPI:SetBlatantSetting("BlatantV4", "TimeoutDelay", v) end
+    })
+    
+    blatantv4:Toggle({
+        Title = "ACTIVATE BLATANT V4",
+        Value = false,
+        Callback = function(state)
+            FishingAPI:SetBlatantMode("BlatantV4", state)
+        end
+    })
+
+    -- ================= BLATANT V5 SECTION =================
+    local blatantv5 = farm:Section({ Title = "💎 BLATANT V5 (CLEAN)" })
+
+    blatantv5:Input({
+        Title = "Complete Delay",
+        Default = "0.001",
+        Callback = function(v) FishingAPI:SetBlatantSetting("BlatantV5", "CompleteDelay", v) end
+    })
+
+    blatantv5:Input({
+        Title = "Cancel Delay",
+        Default = "0.001",
+        Callback = function(v) FishingAPI:SetBlatantSetting("BlatantV5", "CancelDelay", v) end
+    })
+    
+    blatantv5:Toggle({
+        Title = "ACTIVATE BLATANT V5",
+        Value = false,
+        Callback = function(state)
+            FishingAPI:SetBlatantMode("BlatantV5", state)
+        end
+    })
+
+    -- ================= FAST PERFECT SECTION =================
+    local fastperfect = farm:Section({ Title = "🚀 FAST PERFECT" })
+
+    fastperfect:Input({
+        Title = "Fishing Delay",
+        Default = "0.01",
+        Callback = function(v) FishingAPI:SetBlatantSetting("FastPerfect", "FishingDelay", v) end
+    })
+
+    fastperfect:Input({
+        Title = "Hook Detection Delay",
+        Default = "0.01",
+        Callback = function(v) FishingAPI:SetBlatantSetting("FastPerfect", "HookDetectionDelay", v) end
+    })
+
+    fastperfect:Input({
+        Title = "Timeout Delay",
+        Default = "0.5",
+        Callback = function(v) FishingAPI:SetBlatantSetting("FastPerfect", "TimeoutDelay", v) end
+    })
+    
+    fastperfect:Toggle({
+        Title = "ACTIVATE FAST PERFECT",
+        Value = false,
+        Callback = function(state)
+            FishingAPI:SetBlatantMode("FastPerfect", state)
         end
     })
 
@@ -196,7 +231,7 @@ return function(Window, FishingAPI, WindUI, FishingAreas, AreaNames)
     local cleanup = farm:Section({ Title = "System" })
     
     cleanup:Button({
-        Title = "STOP ALL FISHING",
+        Title = "🛑 STOP ALL FISHING",
         Callback = function()
             FishingAPI:Cleanup()
             if WindUI then
@@ -208,4 +243,22 @@ return function(Window, FishingAPI, WindUI, FishingAreas, AreaNames)
             end
         end
     })
+
+    cleanup:Paragraph({
+        Title = "ℹ️ Mode Comparison",
+        Content = "V2: Ultra Fast (7ms)\nV3: Optimized (730ms)\nV4: Event Based\nV5: Clean Fast\nPerfect: Hook Detection"
+    })
+
+    -- Auto stats update
+    task.spawn(function()
+        while task.wait(3) do
+            local modes = {"BlatantV2", "BlatantV3", "BlatantV4", "BlatantV5", "FastPerfect"}
+            for _, mode in ipairs(modes) do
+                local stats = FishingAPI:GetBlatantStats(mode)
+                if stats.Active then
+                    print(string.format("[%s] Active | %s", mode, stats.Speed or ("Cycle: " .. stats.Cycle)))
+                end
+            end
+        end
+    end)
 end
